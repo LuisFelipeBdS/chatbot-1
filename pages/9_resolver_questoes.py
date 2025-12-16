@@ -11,6 +11,7 @@ from pathlib import Path
 from datetime import datetime
 import random
 import json
+import re
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -209,8 +210,15 @@ else:
     st.markdown("**Alternativas:**")
     
     for alt in alternativas:
-        # Extrair letra da alternativa
-        letra = alt[0] if alt else ""
+        # Extrair letra da alternativa (suporta formatos: "(A)", "A)", "A.")
+        letra = ""
+        if alt:
+            # Procurar letra entre parênteses ou no início
+            match = re.search(r'\(?([A-Ea-e])\)?', alt[:5])
+            if match:
+                letra = match.group(1).upper()
+            else:
+                letra = alt[0].upper() if alt[0].isalpha() else ""
         
         # Determinar estilo baseado no estado
         if st.session_state.mostrar_gabarito:
