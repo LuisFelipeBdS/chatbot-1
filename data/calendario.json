@@ -1,0 +1,102 @@
+{
+  "ano_1": {
+    "2026": [
+      {
+        "rodizio": "Infectologia",
+        "inicio": "2026-02-09",
+        "fim": "2026-03-29",
+        "temas_prioritarios": [
+          "Tuberculose",
+          "HIV e AIDS",
+          "Sífilis",
+          "Dengue",
+          "Pneumonias",
+          "Sepse",
+          "Hepatites Virais",
+          "Infecções do SNC"
+        ],
+        "grande_area_principal": "Clinica Medica"
+      },
+      {
+        "rodizio": "Saúde Coletiva",
+        "inicio": "2026-03-30",
+        "fim": "2026-05-17",
+        "temas_prioritarios": [
+          "Princípios do SUS",
+          "Vigilância Epidemiológica",
+          "Notificação Compulsória",
+          "Declaração de Óbito",
+          "Sigilo Médico",
+          "Ética Médica",
+          "Saúde do Trabalhador"
+        ],
+        "grande_area_principal": "Saude Coletiva"
+      },
+      {
+        "rodizio": "Medicina de Família e Comunidade",
+        "inicio": "2026-05-18",
+        "fim": "2026-07-05",
+        "temas_prioritarios": [
+          "Hipertensão Arterial",
+          "Diabetes Mellitus",
+          "Lombalgias",
+          "Transtornos Mentais",
+          "Geriatria",
+          "Abuso de Álcool e Tabaco"
+        ],
+        "grande_area_principal": "Clinica Medica"
+      },
+      {
+        "rodizio": "Tocoginecologia",
+        "inicio": "2026-07-20",
+        "fim": "2026-09-06",
+        "temas_prioritarios": [
+          "Pré-natal",
+          "Síndromes Hipertensivas",
+          "Pré-eclâmpsia",
+          "Diabetes Gestacional",
+          "Sangramentos na Gestação",
+          "DPP",
+          "Placenta Prévia",
+          "Rastreamento Câncer de Colo",
+          "Rastreamento Câncer de Mama"
+        ],
+        "grande_area_principal": "Ginecologia e Obstetricia"
+      },
+      {
+        "rodizio": "Pediatria",
+        "inicio": "2026-09-07",
+        "fim": "2026-10-25",
+        "temas_prioritarios": [
+          "Puericultura",
+          "Marcos do Desenvolvimento",
+          "Calendário Vacinal",
+          "Crise Convulsiva Febril",
+          "Infecções Respiratórias",
+          "Neonatologia",
+          "Doenças Exantemáticas"
+        ],
+        "grande_area_principal": "Pediatria"
+      },
+      {
+        "rodizio": "Cirurgia Geral",
+        "inicio": "2026-10-26",
+        "fim": "2026-12-13",
+        "temas_prioritarios": [
+          "Trauma (ATLS)",
+          "Abdome Agudo",
+          "Apendicite",
+          "Hérnias",
+          "Colecistite",
+          "Pneumotórax",
+          "Hemorragia Digestiva"
+        ],
+        "grande_area_principal": "Cirurgia Geral"
+      }
+    ]
+  },
+  "ano_2": {
+    "2027": []
+  }
+}
+

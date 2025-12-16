@@ -1,0 +1,28 @@
+{
+  "usuario": {
+    "nome": "",
+    "ano_estudo": 1,
+    "data_inicio_estudo": "2026-01-15",
+    "data_prova_estimada": "2027-11-15"
+  },
+  "metas": {
+    "banca_principal": "ENAMED",
+    "nota_meta": 90,
+    "questoes_semana_meta": 320
+  },
+  "modo_estudo": {
+    "tipo": "focado_resultado",
+    "margem": "equilibrado",
+    "ano_para_valer": false
+  },
+  "diagnostico_inicial": {
+    "clinica_medica": null,
+    "saude_coletiva": null,
+    "pediatria": null,
+    "ginecologia_obstetricia": null,
+    "cirurgia_geral": null,
+    "saude_mental": null
+  },
+  "configurado": false
+}
+

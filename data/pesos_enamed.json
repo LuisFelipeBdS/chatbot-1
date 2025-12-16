@@ -1,0 +1,94 @@
+{
+  "pesos_areas": {
+    "Clinica Medica": 0.325,
+    "Saude Coletiva": 0.225,
+    "Pediatria": 0.175,
+    "Ginecologia e Obstetricia": 0.175,
+    "Cirurgia Geral": 0.125,
+    "Saude Mental": 0.075
+  },
+  "temas_high_yield": {
+    "Saude Coletiva": [
+      "Declaração de Óbito",
+      "Sigilo Médico",
+      "Autonomia do Paciente",
+      "Princípios do SUS",
+      "Notificação Compulsória",
+      "Vigilância Epidemiológica",
+      "Saúde do Trabalhador"
+    ],
+    "Clinica Medica": [
+      "Dengue",
+      "Tuberculose",
+      "HIV e AIDS",
+      "Sífilis",
+      "Pneumonias",
+      "Lombalgias",
+      "Gota",
+      "Trombofilias",
+      "Hipertensão Arterial",
+      "Diabetes Mellitus",
+      "Sepse"
+    ],
+    "Cirurgia Geral": [
+      "Pneumotórax Hipertensivo",
+      "Trauma Abdominal",
+      "Apendicite",
+      "Diverticulite",
+      "Colangite",
+      "Abdome Agudo",
+      "Hérnias",
+      "Hemorragia Digestiva"
+    ],
+    "Pediatria": [
+      "Marcos do Desenvolvimento",
+      "Reflexos Primitivos",
+      "Calendário Vacinal",
+      "Crise Convulsiva Febril",
+      "Hérnia Diafragmática Congênita",
+      "TDAH",
+      "Puericultura",
+      "Infecções Respiratórias"
+    ],
+    "Ginecologia e Obstetricia": [
+      "Síndromes Hipertensivas",
+      "Pré-eclâmpsia",
+      "Diabetes Gestacional",
+      "DPP",
+      "Placenta Prévia",
+      "Rastreamento Câncer de Colo",
+      "Rastreamento Câncer de Mama",
+      "Pré-natal"
+    ],
+    "Saude Mental": [
+      "Manejo de Crise na APS",
+      "Transtornos do Humor",
+      "Reforma Psiquiátrica"
+    ]
+  },
+  "temas_low_yield": [
+    "Oncologia de alta complexidade",
+    "Técnicas cirúrgicas especializadas",
+    "Doenças genéticas raras",
+    "Farmacologia molecular",
+    "Fisiologia isolada"
+  ],
+  "multiplicadores": {
+    "high_yield": 1.5,
+    "normal": 1.0,
+    "low_yield": 0.5
+  },
+  "bonus_rodizio_atual": 1.2,
+  "distribuicao_revisoes": {
+    "primeira": 0.57,
+    "segunda": 0.25,
+    "terceira": 0.18
+  },
+  "distribuicao_trimestral": {
+    "jan_mar": 0.08,
+    "abr_jun": 0.27,
+    "jul_set": 0.28,
+    "out_dez": 0.36
+  }
+}
+
