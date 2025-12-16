@@ -186,11 +186,11 @@ with col2:
         st.success("✅ Todos os temas High-Yield prioritários estão em dia!")
 
 # ============================================
-# PLANO DA SEMANA
+# PRÓXIMAS REVISÕES
 # ============================================
 
 st.markdown("---")
-st.subheader("📋 Plano da Semana")
+st.subheader("📋 Próximas Revisões")
 
 plano = obter_plano_semanal()
 
@@ -198,24 +198,34 @@ if plano["temas"]:
     col1, col2 = st.columns([3, 1])
     
     with col1:
-        # Tabela de tarefas
+        # Tabela de revisões próximas
         dados_tabela = []
         for t in plano["temas"][:7]:
             status_emoji = {
                 "atrasada": "🔴 Atrasado",
-                "disponivel": "🟡 Disponível",
-                "pendente": "🟢 Pendente"
+                "disponivel": "🟡 Hoje",
+                "pendente": "🟢 Em breve"
             }.get(t.get("status", "pendente"), "⚪ -")
             
             tema_nome = t['tema']
             if t.get("is_high_yield"):
                 tema_nome += " 🔥"
             
+            # Formatar data sugerida
+            data_str = ""
+            if t.get("data_sugerida"):
+                try:
+                    data_obj = datetime.strptime(t["data_sugerida"], "%Y-%m-%d")
+                    data_str = data_obj.strftime("%d/%m")
+                except:
+                    data_str = t["data_sugerida"]
+            
             dados_tabela.append({
                 "Status": status_emoji,
                 "Tema": tema_nome,
                 "Área": t["grande_area"],
                 "Revisão": f"{t['revisao']}ª",
+                "Data": data_str,
                 "Questões": t["questoes"]
             })
         
@@ -229,10 +239,12 @@ if plano["temas"]:
         diferenca = plano['total_sugerido'] - plano['meta_questoes']
         if diferenca > 100:
             st.warning("⚠️ Acumulado alto!")
-        elif diferenca < -100:
-            st.success("✅ Bom ritmo!")
+        elif plano['total_sugerido'] == 0:
+            st.success("✅ Sem revisões pendentes!")
+        else:
+            st.info("📅 Revisões agendadas")
 else:
-    st.info("📝 Nenhuma tarefa pendente. Registre seus estudos na página de Estudo.")
+    st.success("✅ Nenhuma revisão pendente nos próximos 7 dias! Continue estudando novos temas.")
 
 # ============================================
 # COBERTURA E PERFORMANCE
@@ -321,6 +333,8 @@ with st.sidebar:
     st.page_link("pages/5_questoes.py", label="❓ Banco de Questões")
     st.page_link("pages/6_metricas.py", label="📊 Métricas")
     st.page_link("pages/7_revisao_final.py", label="🎯 Revisão Final")
+    st.page_link("pages/8_cronograma.py", label="📆 Cronograma")
+    st.page_link("pages/9_resolver_questoes.py", label="✏️ Resolver Questões")
     
     st.markdown("---")
     st.caption(f"Última atualização: {estudo.get('ultima_atualizacao', 'Nunca')[:10] if estudo.get('ultima_atualizacao') else 'Nunca'}")

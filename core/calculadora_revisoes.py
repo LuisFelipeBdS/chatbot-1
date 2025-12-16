@@ -237,10 +237,15 @@ class CalculadoraRevisoes:
     
     def gerar_relatorio_pendencias(
         self,
-        registro_estudo: Dict[str, Any]
+        registro_estudo: Dict[str, Any],
+        apenas_proximas: bool = False
     ) -> List[Dict[str, Any]]:
         """
         Gera um relatório de todas as pendências de revisão.
+        
+        Args:
+            registro_estudo: Dados do estudo
+            apenas_proximas: Se True, filtra apenas revisões próximas (7 dias)
         
         Retorna lista ordenada por urgência.
         """
@@ -249,8 +254,9 @@ class CalculadoraRevisoes:
         for tema_key, tema_dados in registro_estudo.get("registro_temas", {}).items():
             proxima = self.calcular_proxima_acao(tema_dados)
             
-            if proxima["acao"] not in ["aguardar_revisao_final"]:
+            if proxima["acao"] not in ["aguardar_revisao_final", "ver_teoria"]:
                 urgencia_score = 0
+                incluir = True
                 
                 if proxima.get("status") == "atrasada":
                     urgencia_score = 100
@@ -259,18 +265,29 @@ class CalculadoraRevisoes:
                 elif proxima.get("status") == "pendente":
                     dias = proxima.get("dias_restantes", 30)
                     urgencia_score = max(0, 30 - dias)
+                    
+                    # Se apenas_proximas, ignorar revisões muito distantes
+                    if apenas_proximas and dias > 7:
+                        incluir = False
                 
-                pendencias.append({
-                    "tema": tema_key,
-                    "acao": proxima["acao"],
-                    "descricao": proxima["descricao"],
-                    "status": proxima.get("status", "pendente"),
-                    "data_sugerida": proxima.get("data_sugerida"),
-                    "urgencia_score": urgencia_score
-                })
+                if incluir:
+                    pendencias.append({
+                        "tema": tema_key,
+                        "acao": proxima["acao"],
+                        "descricao": proxima["descricao"],
+                        "status": proxima.get("status", "pendente"),
+                        "data_sugerida": proxima.get("data_sugerida"),
+                        "urgencia_score": urgencia_score,
+                        "dias_restantes": proxima.get("dias_restantes", 0)
+                    })
         
-        # Ordenar por urgência (maior primeiro)
-        pendencias.sort(key=lambda x: x["urgencia_score"], reverse=True)
+        # Ordenar por data sugerida (mais próxima primeiro)
+        def sort_key(x):
+            if x.get("data_sugerida"):
+                return x["data_sugerida"]
+            return "9999-99-99"
+        
+        pendencias.sort(key=sort_key)
         
         return pendencias
 

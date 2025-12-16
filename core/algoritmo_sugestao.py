@@ -216,14 +216,17 @@ class AlgoritmoSugestao:
             }
         }
     
-    def gerar_plano_semanal(self) -> Dict[str, Any]:
+    def gerar_plano_semanal(self, apenas_proximas: bool = True) -> Dict[str, Any]:
         """
-        Gera um plano semanal de questões para todos os temas pendentes.
+        Gera um plano semanal de questões para os temas com revisão próxima.
+        
+        Args:
+            apenas_proximas: Se True, mostra apenas revisões nos próximos 7 dias
         """
         from .calculadora_revisoes import CalculadoraRevisoes
         
         calc_rev = CalculadoraRevisoes()
-        pendencias = calc_rev.gerar_relatorio_pendencias(self.estudo)
+        pendencias = calc_rev.gerar_relatorio_pendencias(self.estudo, apenas_proximas=apenas_proximas)
         
         plano = {
             "semana": datetime.now().strftime("%Y-W%W"),
@@ -232,7 +235,7 @@ class AlgoritmoSugestao:
             "total_sugerido": 0
         }
         
-        for pend in pendencias[:10]:  # Top 10 mais urgentes
+        for pend in pendencias[:10]:  # Top 10 mais próximas
             tema_key = pend["tema"]
             
             # Encontrar dados do tema
@@ -255,14 +258,16 @@ class AlgoritmoSugestao:
                             "questoes": sugestao["questoes_sugeridas"],
                             "urgencia": pend["urgencia_score"],
                             "is_high_yield": sugestao["detalhes"]["is_high_yield"],
-                            "status": pend["status"]
+                            "status": pend["status"],
+                            "data_sugerida": pend.get("data_sugerida"),
+                            "dias_restantes": pend.get("dias_restantes", 0)
                         })
                         
                         plano["total_sugerido"] += sugestao["questoes_sugeridas"]
                         break
         
-        # Ordenar por urgência
-        plano["temas"].sort(key=lambda x: x["urgencia"], reverse=True)
+        # Ordenar por data sugerida (mais próxima primeiro)
+        plano["temas"].sort(key=lambda x: x.get("data_sugerida") or "9999-99-99")
         
         return plano
     
