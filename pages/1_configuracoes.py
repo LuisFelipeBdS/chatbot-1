@@ -18,6 +18,7 @@ from utils.constants import (
     GRANDES_AREAS, MODOS_ESTUDO, MARGENS_ESTUDO,
     META_QUESTOES_SEMANA
 )
+from utils.styles import inject_css, render_main_header
 
 st.set_page_config(
     page_title="Configurações - Plataforma de Estudos",
@@ -25,8 +26,14 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("⚙️ Configurações Iniciais")
-st.markdown("---")
+# Injetar CSS
+inject_css()
+
+# Header
+st.markdown(
+    render_main_header("⚙️ Configurações", "Configure sua jornada de estudos"),
+    unsafe_allow_html=True
+)
 
 # Carregar configuração atual
 config = carregar_config()
@@ -40,7 +47,14 @@ tab1, tab2, tab3, tab4 = st.tabs([
 ])
 
 with tab1:
-    st.header("Dados Pessoais")
+    st.markdown("""
+    <div class="section-card">
+        <div class="section-header">
+            <div class="section-icon primary">👤</div>
+            <div class="section-title">Dados Pessoais</div>
+        </div>
+        <div class="section-body">
+    """, unsafe_allow_html=True)
     
     col1, col2 = st.columns(2)
     
@@ -86,9 +100,18 @@ with tab1:
         if dias_restantes > 0:
             semanas = dias_restantes // 7
             st.info(f"📅 Faltam **{dias_restantes} dias** ({semanas} semanas) até a prova estimada.")
+    
+    st.markdown("</div></div>", unsafe_allow_html=True)
 
 with tab2:
-    st.header("Metas de Estudo")
+    st.markdown("""
+    <div class="section-card">
+        <div class="section-header">
+            <div class="section-icon success">🎯</div>
+            <div class="section-title">Metas de Estudo</div>
+        </div>
+        <div class="section-body">
+    """, unsafe_allow_html=True)
     
     col1, col2 = st.columns(2)
     
@@ -118,16 +141,25 @@ with tab2:
             help="Recomendado: 320 questões/semana para meta de 90% em 2 anos"
         )
         
-        st.markdown("---")
-        st.markdown("**📈 Referências de Meta:**")
         st.markdown("""
+        **📈 Referências de Meta:**
         - **Baixa concorrência**: 150-200 questões/semana
         - **Média concorrência**: 200-500 questões/semana  
         - **Alta concorrência**: 500+ questões/semana
         """)
+    
+    st.markdown("</div></div>", unsafe_allow_html=True)
 
 with tab3:
-    st.header("Diagnóstico Inicial por Grande Área")
+    st.markdown("""
+    <div class="section-card">
+        <div class="section-header">
+            <div class="section-icon warning">📊</div>
+            <div class="section-title">Diagnóstico Inicial por Grande Área</div>
+        </div>
+        <div class="section-body">
+    """, unsafe_allow_html=True)
+    
     st.markdown("""
     Informe sua porcentagem de acerto atual em cada grande área.
     Isso ajudará o algoritmo a personalizar suas recomendações desde o início.
@@ -199,14 +231,26 @@ with tab3:
     )
     
     st.markdown("---")
-    st.metric(
-        "Nota Estimada Atual (Ponderada ENAMED)",
-        f"{media_ponderada:.1f}%",
-        delta=f"{media_ponderada - nota_meta:.1f}% da meta" if 'nota_meta' in dir() else None
-    )
+    
+    col1, col2, col3 = st.columns(3)
+    with col2:
+        st.metric(
+            "Nota Estimada Atual (Ponderada ENAMED)",
+            f"{media_ponderada:.1f}%",
+            delta=f"{media_ponderada - nota_meta:.1f}% da meta" if 'nota_meta' in dir() else None
+        )
+    
+    st.markdown("</div></div>", unsafe_allow_html=True)
 
 with tab4:
-    st.header("Modo de Estudo")
+    st.markdown("""
+    <div class="section-card">
+        <div class="section-header">
+            <div class="section-icon danger">⚡</div>
+            <div class="section-title">Modo de Estudo</div>
+        </div>
+        <div class="section-body">
+    """, unsafe_allow_html=True)
     
     col1, col2 = st.columns(2)
     
@@ -241,18 +285,14 @@ with tab4:
         ano_valer = st.checkbox(
             "Este é meu ano para valer?",
             value=config.get("modo_estudo", {}).get("ano_para_valer", False),
-            help="""
-            Marque se este é o ano em que você PRECISA passar.
-            O sistema ajustará a intensidade de acordo.
-            """
+            help="Marque se este é o ano em que você PRECISA passar. O sistema ajustará a intensidade."
         )
         
         st.markdown("---")
-        st.markdown("### 📝 Resumo do Modo")
         
         if modo == "focado_resultado":
             st.success("""
-            **Modo Selecionado: Focado no Resultado**
+            **Modo: Focado no Resultado** ✓
             
             O sistema calculará automaticamente:
             - Quantas questões fazer por semana
@@ -261,13 +301,15 @@ with tab4:
             """)
         else:
             st.info("""
-            **Modo Selecionado: Focado na Quantidade**
+            **Modo: Focado na Quantidade**
             
-            Você define a quantidade de estudo e o sistema:
+            Você define a quantidade e o sistema:
             - Distribui otimamente entre os temas
             - Prioriza pelo peso ENAMED
             - Ajusta conforme rodízio atual
             """)
+    
+    st.markdown("</div></div>", unsafe_allow_html=True)
 
 # Botão de salvar
 st.markdown("---")
@@ -301,16 +343,16 @@ with col2:
         st.success("✅ Configurações salvas com sucesso!")
         st.balloons()
 
-# Sidebar com informações
+# Sidebar
 with st.sidebar:
-    st.header("ℹ️ Informações")
+    st.markdown("### ℹ️ Informações")
     
     if config.get("configurado"):
         st.success("Sistema configurado ✓")
         st.markdown(f"""
         **Usuário:** {config.get('usuario', {}).get('nome', 'Não informado')}
         
-        **Ano de Estudo:** {config.get('usuario', {}).get('ano_estudo', 1)}
+        **Ano:** {config.get('usuario', {}).get('ano_estudo', 1)}º ano
         
         **Meta:** {config.get('metas', {}).get('nota_meta', 90)}%
         """)
@@ -319,9 +361,8 @@ with st.sidebar:
     
     st.markdown("---")
     st.markdown("""
-    ### 📚 Sobre os Pesos ENAMED
+    ### 📚 Pesos ENAMED
     
-    Baseado na análise da prova 2025:
     - **Clínica Médica**: 32.5%
     - **Saúde Coletiva**: 22.5%
     - **Pediatria**: 17.5%
@@ -329,4 +370,3 @@ with st.sidebar:
     - **Cirurgia**: 12.5%
     - **Saúde Mental**: 7.5%
     """)
-

@@ -12,6 +12,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from utils.helpers import carregar_questoes, salvar_questoes, carregar_estudo, salvar_estudo
+from utils.styles import inject_css, render_main_header
 
 st.set_page_config(
     page_title="Banco de Questões - Plataforma de Estudos",
@@ -19,18 +20,31 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("❓ Banco de Questões")
-st.markdown("---")
+# Injetar CSS
+inject_css()
+
+# Header
+st.markdown(
+    render_main_header("❓ Banco de Questões", "Importe e gerencie suas questões"),
+    unsafe_allow_html=True
+)
 
 # Carregar dados
 questoes = carregar_questoes()
 estudo = carregar_estudo()
 
 # Tabs
-tab1, tab2, tab3 = st.tabs(["📥 Importar Questões", "🔍 Visualizar Questões", "⭐ Questões Importantes"])
+tab1, tab2, tab3 = st.tabs(["📥 Importar", "🔍 Visualizar", "⭐ Importantes"])
 
 with tab1:
-    st.header("Importar Banco de Questões (JSON)")
+    st.markdown("""
+    <div class="section-card">
+        <div class="section-header">
+            <div class="section-icon primary">📥</div>
+            <div class="section-title">Importar Banco de Questões (JSON)</div>
+        </div>
+        <div class="section-body">
+    """, unsafe_allow_html=True)
     
     st.markdown("""
     ### Formato Esperado do JSON
@@ -62,30 +76,26 @@ with tab1:
         try:
             conteudo = json.load(uploaded_file)
             
-            # Validar estrutura
             if "questoes" not in conteudo:
                 st.error("❌ Formato inválido: campo 'questoes' não encontrado")
             else:
                 questoes_importadas = conteudo["questoes"]
                 
-                st.success(f"✅ {len(questoes_importadas)} questões encontradas no arquivo!")
+                st.success(f"✅ {len(questoes_importadas)} questões encontradas!")
                 
-                # Preview
-                st.markdown("**Preview das primeiras questões:**")
+                st.markdown("**Preview:**")
                 for i, q in enumerate(questoes_importadas[:3]):
                     with st.expander(f"Questão {i+1}: {q.get('tema', 'Sem tema')}"):
                         st.markdown(f"**Enunciado:** {q.get('enunciado', '')[:200]}...")
                         st.markdown(f"**Gabarito:** {q.get('gabarito', '?')}")
                         st.markdown(f"**Área:** {q.get('grande_area', 'Não informada')}")
-                        st.markdown(f"**Banca:** {q.get('banca', 'Não informada')}")
                 
                 col1, col2 = st.columns(2)
                 
                 with col1:
                     modo_import = st.radio(
                         "Modo de importação",
-                        options=["Substituir tudo", "Adicionar às existentes"],
-                        help="Substituir remove todas as questões anteriores"
+                        options=["Substituir tudo", "Adicionar às existentes"]
                     )
                 
                 if st.button("📥 Confirmar Importação", type="primary"):
@@ -97,16 +107,25 @@ with tab1:
                     questoes["total"] = len(questoes["questoes"])
                     salvar_questoes(questoes)
                     
-                    st.success(f"✅ {len(questoes_importadas)} questões importadas com sucesso!")
+                    st.success(f"✅ {len(questoes_importadas)} questões importadas!")
                     st.balloons()
                     
         except json.JSONDecodeError:
-            st.error("❌ Erro ao ler JSON. Verifique se o arquivo está no formato correto.")
+            st.error("❌ Erro ao ler JSON. Verifique o formato.")
         except Exception as e:
             st.error(f"❌ Erro: {str(e)}")
+    
+    st.markdown("</div></div>", unsafe_allow_html=True)
 
 with tab2:
-    st.header("Visualizar Questões")
+    st.markdown("""
+    <div class="section-card">
+        <div class="section-header">
+            <div class="section-icon success">🔍</div>
+            <div class="section-title">Visualizar Questões</div>
+        </div>
+        <div class="section-body">
+    """, unsafe_allow_html=True)
     
     todas_questoes = questoes.get("questoes", [])
     
@@ -115,25 +134,20 @@ with tab2:
     else:
         st.markdown(f"**Total: {len(todas_questoes)} questões**")
         
-        # Filtros
         col1, col2, col3 = st.columns(3)
         
         with col1:
-            # Extrair áreas únicas
             areas = list(set(q.get("grande_area", "Não classificada") for q in todas_questoes))
-            area_filtro = st.selectbox("Filtrar por Área", ["Todas"] + sorted(areas))
+            area_filtro = st.selectbox("Área", ["Todas"] + sorted(areas))
         
         with col2:
-            # Extrair temas únicos
-            temas = list(set(q.get("tema", "Não classificado") for q in todas_questoes))
-            tema_filtro = st.selectbox("Filtrar por Tema", ["Todos"] + sorted(temas))
+            temas_unicos = list(set(q.get("tema", "Não classificado") for q in todas_questoes))
+            tema_filtro = st.selectbox("Tema", ["Todos"] + sorted(temas_unicos))
         
         with col3:
-            # Extrair bancas únicas
             bancas = list(set(q.get("banca", "Não informada") for q in todas_questoes))
-            banca_filtro = st.selectbox("Filtrar por Banca", ["Todas"] + sorted(bancas))
+            banca_filtro = st.selectbox("Banca", ["Todas"] + sorted(bancas))
         
-        # Aplicar filtros
         questoes_filtradas = todas_questoes
         
         if area_filtro != "Todas":
@@ -147,7 +161,6 @@ with tab2:
         
         st.markdown(f"**Mostrando: {len(questoes_filtradas)} questões**")
         
-        # Paginação
         questoes_por_pagina = 10
         total_paginas = max(1, len(questoes_filtradas) // questoes_por_pagina + 1)
         
@@ -170,12 +183,13 @@ with tab2:
                     for alt in q.get("alternativas", []):
                         st.markdown(f"- {alt}")
                     
-                    st.markdown(f"**Gabarito:** ||{q.get('gabarito', '?')}||")
+                    if st.button(f"Ver Gabarito", key=f"gab_{questao_id}"):
+                        st.success(f"**Gabarito:** {q.get('gabarito', '?')}")
                     
                     st.caption(f"Área: {q.get('grande_area', '?')} | Tema: {q.get('tema', '?')} | Banca: {q.get('banca', '?')}")
             
             with col2:
-                if st.button("⭐" if not marcada else "★", key=f"mark_{questao_id}", help="Marcar como importante"):
+                if st.button("⭐" if not marcada else "★", key=f"mark_{questao_id}"):
                     marcadas = estudo.get("questoes_marcadas_importantes", [])
                     
                     if marcada:
@@ -186,14 +200,23 @@ with tab2:
                     estudo["questoes_marcadas_importantes"] = marcadas
                     salvar_estudo(estudo)
                     st.rerun()
+    
+    st.markdown("</div></div>", unsafe_allow_html=True)
 
 with tab3:
-    st.header("⭐ Questões Marcadas como Importantes")
+    st.markdown("""
+    <div class="section-card">
+        <div class="section-header">
+            <div class="section-icon warning">⭐</div>
+            <div class="section-title">Questões Marcadas como Importantes</div>
+        </div>
+        <div class="section-body">
+    """, unsafe_allow_html=True)
     
     st.markdown("""
-    Questões marcadas como importantes serão usadas na **Revisão Final** antes da prova.
+    Questões marcadas serão usadas na **Revisão Final** antes da prova.
     
-    Use para marcar questões com:
+    Use para marcar:
     - 📌 Conceitos-chave
     - 📊 Classificações e escalas
     - 🔑 Achados patognomônicos
@@ -202,16 +225,13 @@ with tab3:
     marcadas = estudo.get("questoes_marcadas_importantes", [])
     
     if not marcadas:
-        st.info("⭐ Nenhuma questão marcada ainda. Marque questões importantes na aba 'Visualizar Questões'.")
+        st.info("⭐ Nenhuma questão marcada ainda.")
     else:
         st.metric("Total de Questões Importantes", len(marcadas))
         
         todas_questoes = questoes.get("questoes", [])
-        
-        # Encontrar questões marcadas
         questoes_importantes = [q for q in todas_questoes if q.get("id") in marcadas]
         
-        # Agrupar por área
         por_area = {}
         for q in questoes_importantes:
             area = q.get("grande_area", "Outras")
@@ -222,24 +242,25 @@ with tab3:
         for area, qs in por_area.items():
             st.subheader(f"📁 {area} ({len(qs)} questões)")
             
-            for q in qs[:5]:  # Mostrar até 5 por área
+            for q in qs[:5]:
                 with st.expander(f"📝 {q.get('tema', 'Sem tema')}"):
                     st.markdown(q.get("enunciado", "")[:300] + "...")
                     st.markdown(f"**Gabarito:** {q.get('gabarito', '?')}")
+    
+    st.markdown("</div></div>", unsafe_allow_html=True)
 
 # Sidebar
 with st.sidebar:
-    st.header("📊 Estatísticas do Banco")
+    st.markdown("### 📊 Estatísticas")
     
     total = len(questoes.get("questoes", []))
     st.metric("Total de Questões", total)
     
-    marcadas = len(estudo.get("questoes_marcadas_importantes", []))
-    st.metric("Questões Importantes", marcadas)
+    marcadas_count = len(estudo.get("questoes_marcadas_importantes", []))
+    st.metric("Questões Importantes", marcadas_count)
     
     st.markdown("---")
     
-    # Distribuição por área
     if total > 0:
         st.markdown("**Por Área:**")
         todas = questoes.get("questoes", [])
@@ -256,11 +277,5 @@ with st.sidebar:
     st.markdown("""
     ### 💡 Dica
     
-    Marque questões importantes ao longo do ano para usar na **Revisão Final**!
-    
-    Foco em:
-    - Classificações
-    - Escalas
-    - Critérios diagnósticos
+    Marque questões importantes ao longo do ano para a **Revisão Final**!
     """)
-

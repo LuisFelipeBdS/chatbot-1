@@ -14,6 +14,7 @@ from utils.helpers import (
     carregar_estudo, salvar_estudo, carregar_temas,
     carregar_config, carregar_pesos
 )
+from utils.styles import inject_css, render_main_header, render_section_card
 from core.calculadora_revisoes import CalculadoraRevisoes, calcular_datas_revisao
 from core.algoritmo_sugestao import AlgoritmoSugestao
 from core.priorizador_enamed import PriorizadorENAMED
@@ -24,8 +25,14 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("📝 Registro de Estudos")
-st.markdown("---")
+# Injetar CSS
+inject_css()
+
+# Header
+st.markdown(
+    render_main_header("📝 Registro de Estudos", "Registre sua teoria e revisões"),
+    unsafe_allow_html=True
+)
 
 # Carregar dados
 estudo = carregar_estudo()
@@ -41,19 +48,24 @@ priorizador = PriorizadorENAMED()
 tab1, tab2, tab3 = st.tabs(["📖 Registrar Teoria", "📝 Registrar Revisão", "📋 Meus Registros"])
 
 with tab1:
-    st.header("Registrar Teoria Estudada")
+    st.markdown("""
+    <div class="section-card">
+        <div class="section-header">
+            <div class="section-icon primary">📖</div>
+            <div class="section-title">Registrar Teoria Estudada</div>
+        </div>
+        <div class="section-body">
+    """, unsafe_allow_html=True)
     
     col1, col2 = st.columns(2)
     
     with col1:
-        # Selecionar área
         area_teoria = st.selectbox(
             "Grande Área",
             options=list(temas.get("grandes_areas", {}).keys()),
             key="area_teoria"
         )
         
-        # Selecionar tema
         temas_area = [t["nome"] for t in temas["grandes_areas"][area_teoria]["temas"]]
         tema_teoria = st.selectbox(
             "Tema",
@@ -68,18 +80,29 @@ with tab1:
             key="data_teoria"
         )
         
-        # Mostrar classificação
         classif = priorizador.classificar_tema(tema_teoria, area_teoria)
-        st.info(f"{classif['icone']} **{classif['classificacao'].replace('_', ' ').title()}**: {classif['descricao']}")
+        
+        if classif["classificacao"] == "high_yield":
+            st.success(f"🔥 **High-Yield**: {classif['descricao']}")
+        elif classif["classificacao"] == "low_yield":
+            st.warning(f"📉 **Low-Yield**: {classif['descricao']}")
+        else:
+            st.info(f"📖 **Normal**: {classif['descricao']}")
     
-    # Preview do cronograma
     if st.checkbox("Ver cronograma de revisões sugerido", key="preview_teoria"):
         cronograma = calcular_datas_revisao(data_teoria.strftime("%Y-%m-%d"), tema_teoria)
         
-        st.markdown("**Cronograma Sugerido:**")
-        for rev, dados in cronograma["revisoes"].items():
+        st.markdown("**📅 Cronograma Sugerido:**")
+        col1, col2, col3 = st.columns(3)
+        
+        for i, (rev, dados) in enumerate(cronograma["revisoes"].items()):
             data_sug = datetime.strptime(dados["data_sugerida"], "%Y-%m-%d")
-            st.markdown(f"- **{rev.upper()}**: {data_sug.strftime('%d/%m/%Y')} ({int(dados['percentual_questoes']*100)}% das questões)")
+            with [col1, col2, col3][i]:
+                st.metric(
+                    f"{rev.upper()}",
+                    data_sug.strftime('%d/%m/%Y'),
+                    f"{int(dados['percentual_questoes']*100)}% questões"
+                )
     
     if st.button("💾 Registrar Teoria", type="primary", key="btn_teoria"):
         registro = estudo.get("registro_temas", {})
@@ -95,11 +118,19 @@ with tab1:
         
         st.success(f"✅ Teoria de '{tema_teoria}' registrada!")
         st.balloons()
+    
+    st.markdown("</div></div>", unsafe_allow_html=True)
 
 with tab2:
-    st.header("Registrar Revisão de Questões")
+    st.markdown("""
+    <div class="section-card">
+        <div class="section-header">
+            <div class="section-icon success">📝</div>
+            <div class="section-title">Registrar Revisão de Questões</div>
+        </div>
+        <div class="section-body">
+    """, unsafe_allow_html=True)
     
-    # Filtrar temas com teoria registrada
     temas_com_teoria = [
         tema for tema, dados in estudo.get("registro_temas", {}).items()
         if dados.get("data_teoria")
@@ -117,7 +148,6 @@ with tab2:
                 key="tema_revisao"
             )
             
-            # Determinar qual revisão é a próxima
             registro_tema = estudo["registro_temas"].get(tema_revisao, {})
             
             proxima_rev = 1
@@ -126,17 +156,17 @@ with tab2:
             if registro_tema.get("r2", {}).get("data"):
                 proxima_rev = 3
             if registro_tema.get("r3", {}).get("data"):
-                proxima_rev = 0  # Todas feitas
+                proxima_rev = 0
             
             if proxima_rev == 0:
-                st.success("✅ Todas as 3 revisões concluídas para este tema!")
+                st.success("✅ Todas as 3 revisões concluídas!")
                 numero_revisao = st.selectbox(
                     "Refazer Revisão",
                     options=[1, 2, 3],
                     key="num_rev"
                 )
             else:
-                st.info(f"📝 Próxima revisão: **{proxima_rev}ª Revisão**")
+                st.info(f"📝 Próxima: **{proxima_rev}ª Revisão**")
                 numero_revisao = st.selectbox(
                     "Número da Revisão",
                     options=[proxima_rev],
@@ -151,7 +181,6 @@ with tab2:
                 key="data_revisao"
             )
             
-            # Calcular sugestão de questões
             area = registro_tema.get("grande_area", "Clinica Medica")
             sugestao = algoritmo.calcular_sugestao_tema(tema_revisao, area, numero_revisao, tema_revisao)
             
@@ -177,7 +206,6 @@ with tab2:
                 key="acertos"
             )
         
-        # Mostrar porcentagem
         if questoes_feitas > 0:
             porcentagem = (acertos / questoes_feitas) * 100
             
@@ -199,7 +227,6 @@ with tab2:
                 "acertos": acertos
             }
             
-            # Atualizar estatísticas gerais
             stats = estudo.get("estatisticas_gerais", {})
             stats["total_questoes_feitas"] = stats.get("total_questoes_feitas", 0) + questoes_feitas
             stats["total_acertos"] = stats.get("total_acertos", 0) + acertos
@@ -210,16 +237,24 @@ with tab2:
             
             st.success(f"✅ {numero_revisao}ª revisão de '{tema_revisao}' registrada!")
             st.balloons()
+    
+    st.markdown("</div></div>", unsafe_allow_html=True)
 
 with tab3:
-    st.header("Meus Registros de Estudo")
+    st.markdown("""
+    <div class="section-card">
+        <div class="section-header">
+            <div class="section-icon warning">📋</div>
+            <div class="section-title">Meus Registros de Estudo</div>
+        </div>
+        <div class="section-body">
+    """, unsafe_allow_html=True)
     
     registro = estudo.get("registro_temas", {})
     
     if not registro:
         st.info("📝 Nenhum registro ainda. Comece registrando uma teoria!")
     else:
-        # Preparar dados
         dados_tabela = []
         
         for tema, dados in registro.items():
@@ -233,21 +268,20 @@ with tab3:
                 return "---"
             
             dados_tabela.append({
-                "Tema": tema[:40] + "..." if len(tema) > 40 else tema,
-                "Área": dados.get("grande_area", "---")[:15],
+                "Tema": tema[:35] + "..." if len(tema) > 35 else tema,
+                "Área": dados.get("grande_area", "---")[:12],
                 "Teoria": dados.get("data_teoria", "---")[:10],
-                "R1 Data": r1.get("data", "---")[:10] if r1 else "---",
-                "R1 %": calc_perc(r1),
-                "R2 Data": r2.get("data", "---")[:10] if r2 else "---",
-                "R2 %": calc_perc(r2),
-                "R3 Data": r3.get("data", "---")[:10] if r3 else "---",
-                "R3 %": calc_perc(r3)
+                "R1": r1.get("data", "---")[:10] if r1 else "---",
+                "R1%": calc_perc(r1),
+                "R2": r2.get("data", "---")[:10] if r2 else "---",
+                "R2%": calc_perc(r2),
+                "R3": r3.get("data", "---")[:10] if r3 else "---",
+                "R3%": calc_perc(r3)
             })
         
         df = pd.DataFrame(dados_tabela)
         st.dataframe(df, use_container_width=True, hide_index=True)
         
-        # Estatísticas
         st.markdown("---")
         col1, col2, col3, col4 = st.columns(4)
         
@@ -265,10 +299,12 @@ with tab3:
         with col4:
             r3_feitas = sum(1 for d in registro.values() if d.get("r3"))
             st.metric("3ª Revisões", r3_feitas)
+    
+    st.markdown("</div></div>", unsafe_allow_html=True)
 
 # Sidebar
 with st.sidebar:
-    st.header("📊 Resumo do Dia")
+    st.markdown("### 📊 Resumo")
     
     stats = estudo.get("estatisticas_gerais", {})
     
@@ -284,8 +320,8 @@ with st.sidebar:
     ### 📖 Como Funciona
     
     1. **Registre a Teoria** quando assistir uma aula
-    2. **Aguarde o intervalo** sugerido (Distributed Practice)
-    3. **Faça as questões** e registre a revisão
+    2. **Aguarde o intervalo** (Distributed Practice)
+    3. **Faça as questões** e registre
     4. **Repita** para R2 e R3
     
     ---
@@ -295,7 +331,4 @@ with st.sidebar:
     - Teoria → R1: ~21 dias
     - R1 → R2: ~30 dias
     - R2 → R3: ~30 dias
-    
-    *Intervalos diminuem perto da prova*
     """)
-

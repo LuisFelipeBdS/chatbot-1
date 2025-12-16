@@ -18,6 +18,13 @@ from utils.helpers import (
     carregar_pesos, obter_rodizio_atual, is_configurado,
     calcular_dias_ate_prova
 )
+from utils.styles import (
+    inject_css, render_main_header, render_metric_card,
+    render_metrics_row, render_rotation_card, render_no_rotation,
+    render_alert, render_section_card, render_progress_bar,
+    render_countdown, render_score_display, render_status_badge,
+    render_hy_badge
+)
 from core.metricas import SistemaMetricas, obter_estatisticas
 from core.priorizador_enamed import PriorizadorENAMED, obter_alertas
 from core.algoritmo_sugestao import AlgoritmoSugestao, obter_plano_semanal
@@ -31,56 +38,39 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# CSS customizado
-st.markdown("""
-<style>
-    .main-header {
-        font-size: 2.5rem;
-        font-weight: bold;
-        color: #1E88E5;
-        margin-bottom: 0.5rem;
-    }
-    .sub-header {
-        font-size: 1.2rem;
-        color: #666;
-        margin-bottom: 2rem;
-    }
-    .metric-card {
-        background-color: #f8f9fa;
-        border-radius: 10px;
-        padding: 1rem;
-        margin: 0.5rem 0;
-    }
-    .alert-high-yield {
-        background-color: #fff3cd;
-        border-left: 4px solid #ffc107;
-        padding: 1rem;
-        margin: 0.5rem 0;
-        border-radius: 0 5px 5px 0;
-    }
-    .progress-good { color: #28a745; }
-    .progress-warning { color: #ffc107; }
-    .progress-danger { color: #dc3545; }
-</style>
-""", unsafe_allow_html=True)
+# Injetar CSS global
+inject_css()
 
-# Título principal
-st.markdown('<p class="main-header">🏥 Plataforma de Estudos para Residência Médica</p>', unsafe_allow_html=True)
-st.markdown('<p class="sub-header">Método baseado em Distributed Practice | Foco: ENAMED</p>', unsafe_allow_html=True)
+# Header Principal
+st.markdown(
+    render_main_header(
+        "🏥 Plataforma de Estudos para Residência Médica",
+        "Método baseado em Distributed Practice | Foco: ENAMED"
+    ),
+    unsafe_allow_html=True
+)
 
 # Verificar se está configurado
 if not is_configurado():
-    st.warning("""
-    ### ⚠️ Configure o sistema para começar!
+    st.markdown("""
+    <div class="section-card">
+        <div class="section-body" style="text-align: center; padding: 3rem;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">⚙️</div>
+            <h2 style="color: #f8fafc; margin-bottom: 1rem;">Configure o sistema para começar!</h2>
+            <p style="color: #94a3b8; margin-bottom: 1.5rem;">
+                Acesse a página de <strong>Configurações</strong> no menu lateral para definir:
+            </p>
+            <div style="display: flex; justify-content: center; gap: 2rem; flex-wrap: wrap; color: #cbd5e1;">
+                <span>📋 Seus dados pessoais</span>
+                <span>🎯 Meta de nota</span>
+                <span>📊 Diagnóstico inicial</span>
+                <span>⚡ Modo de estudo</span>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
     
-    Acesse a página de **Configurações** no menu lateral para definir:
-    - Seus dados pessoais
-    - Meta de nota
-    - Diagnóstico inicial
-    - Modo de estudo
-    """)
-    
-    st.info("👈 Clique em **Configurações** no menu lateral para começar.")
+    st.info("👈 Clique em **configuracoes** no menu lateral para começar.")
     st.stop()
 
 # Carregar dados
@@ -94,222 +84,315 @@ metricas = SistemaMetricas()
 priorizador = PriorizadorENAMED()
 algoritmo = AlgoritmoSugestao()
 
-# Linha superior - Métricas principais
-st.markdown("---")
-col1, col2, col3, col4 = st.columns(4)
-
+# Obter estatísticas
 stats = obter_estatisticas()
+data_prova = config.get("usuario", {}).get("data_prova_estimada", "2027-11-15")
+dias = calcular_dias_ate_prova(data_prova)
+meta = config.get("metas", {}).get("nota_meta", 90)
+
+# ============================================
+# MÉTRICAS PRINCIPAIS
+# ============================================
+
+nota = stats["nota_estimada"]["nota_estimada"]
+delta_nota = nota - meta
+delta_type_nota = "positive" if delta_nota >= 0 else "negative"
+
+media = stats["media_semanal"]
+delta_type_media = "positive" if media["no_ritmo"] else "negative"
+
+metrics_html = render_metrics_row([
+    render_metric_card(
+        icon="📊",
+        label="Nota Estimada",
+        value=f"{nota}%",
+        delta=f"{'↑' if delta_nota >= 0 else '↓'} {abs(delta_nota):.1f}% da meta",
+        delta_type=delta_type_nota,
+        footer=f"Meta: {meta}% | Confiança: {stats['nota_estimada']['confianca']}",
+        color="primary"
+    ),
+    render_metric_card(
+        icon="📝",
+        label="Questões/Semana",
+        value=f"{int(media['media_necessaria'])}",
+        delta="✓ No ritmo" if media["no_ritmo"] else "↑ Acelerar!",
+        delta_type=delta_type_media,
+        footer=f"Semanas restantes: {media['semanas_restantes']}",
+        color="success" if media["no_ritmo"] else "warning"
+    ),
+    render_metric_card(
+        icon="✅",
+        label="Total de Questões",
+        value=f"{stats['questoes_total']:,}",
+        delta=f"↑ {stats['taxa_acerto_geral']:.1f}% acerto",
+        delta_type="positive" if stats['taxa_acerto_geral'] >= 70 else "neutral",
+        footer="Meta 2 anos: 33.500",
+        color="success"
+    ),
+    render_metric_card(
+        icon="📅",
+        label="Dias até a Prova",
+        value=f"{dias}",
+        delta=f"≈ {dias // 7} semanas",
+        delta_type="neutral",
+        footer=f"Data: {datetime.strptime(data_prova, '%Y-%m-%d').strftime('%d/%m/%Y')}",
+        color="warning" if dias < 180 else "primary"
+    )
+])
+
+st.markdown(metrics_html, unsafe_allow_html=True)
+
+# ============================================
+# RODÍZIO ATUAL + ALERTAS
+# ============================================
+
+col1, col2 = st.columns([3, 2])
 
 with col1:
-    nota = stats["nota_estimada"]["nota_estimada"]
-    meta = config.get("metas", {}).get("nota_meta", 90)
-    delta = nota - meta
+    rodizio = obter_rodizio_atual(calendario)
     
-    st.metric(
-        "📊 Nota Estimada",
-        f"{nota}%",
-        delta=f"{delta:+.1f}% da meta",
-        delta_color="normal" if delta >= 0 else "inverse"
-    )
-    st.caption(f"Meta: {meta}% | Confiança: {stats['nota_estimada']['confianca']}")
-
-with col2:
-    media = stats["media_semanal"]
-    
-    st.metric(
-        "📝 Questões/Semana Necessárias",
-        f"{int(media['media_necessaria'])}",
-        delta="No ritmo ✓" if media["no_ritmo"] else "Acelerar!",
-        delta_color="normal" if media["no_ritmo"] else "inverse"
-    )
-    st.caption(f"Semanas restantes: {media['semanas_restantes']}")
-
-with col3:
-    st.metric(
-        "✅ Total de Questões",
-        f"{stats['questoes_total']:,}",
-        delta=f"{stats['taxa_acerto_geral']:.1f}% acerto"
-    )
-    st.caption(f"Meta 2 anos: 33.500")
-
-with col4:
-    data_prova = config.get("usuario", {}).get("data_prova_estimada", "2027-11-15")
-    dias = calcular_dias_ate_prova(data_prova)
-    
-    st.metric(
-        "📅 Dias até a Prova",
-        f"{dias}",
-        delta=f"{dias // 7} semanas"
-    )
-    st.caption(f"Data: {datetime.strptime(data_prova, '%Y-%m-%d').strftime('%d/%m/%Y')}")
-
-# Rodízio Atual
-st.markdown("---")
-rodizio = obter_rodizio_atual(calendario)
-
-if rodizio:
-    col1, col2 = st.columns([2, 1])
-    
-    with col1:
-        st.subheader(f"🏥 Rodízio Atual: {rodizio['rodizio']}")
-        
+    if rodizio:
         inicio = datetime.strptime(rodizio["inicio"], "%Y-%m-%d")
         fim = datetime.strptime(rodizio["fim"], "%Y-%m-%d")
         hoje = datetime.now()
         
-        progresso = min(1.0, (hoje - inicio).days / (fim - inicio).days)
+        progresso = max(0, min(1.0, (hoje - inicio).days / (fim - inicio).days))
         
-        st.progress(progresso, text=f"Progresso: {int(progresso * 100)}%")
-        
-        st.markdown(f"""
-        **Período:** {inicio.strftime('%d/%m/%Y')} - {fim.strftime('%d/%m/%Y')}
-        
-        **Grande Área:** {rodizio['grande_area_principal']} 
-        (Peso ENAMED: {pesos['pesos_areas'].get(rodizio['grande_area_principal'], 0) * 100:.1f}%)
-        """)
-    
-    with col2:
-        st.markdown("**🔥 Temas High-Yield do Rodízio:**")
         high_yield = pesos.get("temas_high_yield", {}).get(rodizio["grande_area_principal"], [])
+        outros = rodizio.get("temas_prioritarios", [])
+        outros_filtrados = [t for t in outros if t not in high_yield]
         
-        for tema in high_yield[:5]:
-            st.markdown(f"• {tema}")
-else:
-    st.info("📅 Nenhum rodízio ativo no momento.")
+        st.markdown(
+            render_rotation_card(
+                nome=rodizio['rodizio'],
+                periodo=f"{inicio.strftime('%d/%m/%Y')} - {fim.strftime('%d/%m/%Y')} • {(fim - inicio).days // 7} semanas",
+                progresso=progresso,
+                temas_hy=high_yield[:5],
+                outros_temas=outros_filtrados
+            ),
+            unsafe_allow_html=True
+        )
+    else:
+        st.markdown(render_no_rotation(), unsafe_allow_html=True)
 
-# Alertas High-Yield
-st.markdown("---")
-st.subheader("⚠️ Alertas High-Yield")
-
-alertas = obter_alertas()
-
-if alertas:
-    for alerta in alertas[:3]:
-        st.markdown(f"""
-        <div class="alert-high-yield">
-            {alerta['mensagem']}<br>
-            <small>Área: {alerta['area']}</small>
+with col2:
+    alertas = obter_alertas()
+    
+    alertas_html = ""
+    if alertas:
+        for alerta in alertas[:4]:
+            alertas_html += render_alert(
+                titulo=alerta['tema'],
+                descricao=f"Área: {alerta['area']}",
+                tipo="danger" if "não revisado" in alerta.get('mensagem', '') else "warning",
+                icon="🔴" if "não revisado" in alerta.get('mensagem', '') else "🟡"
+            )
+    else:
+        alertas_html = '''
+        <div style="text-align: center; padding: 2rem; color: #10b981;">
+            <div style="font-size: 2rem; margin-bottom: 0.5rem;">✅</div>
+            <div>Todos os temas High-Yield prioritários estão em dia!</div>
         </div>
-        """, unsafe_allow_html=True)
-else:
-    st.success("✅ Todos os temas High-Yield prioritários estão em dia!")
+        '''
+    
+    st.markdown(
+        render_section_card(
+            titulo="Alertas High-Yield",
+            icon="⚠️",
+            conteudo=alertas_html,
+            icon_color="warning"
+        ),
+        unsafe_allow_html=True
+    )
 
-# Plano da Semana
-st.markdown("---")
-st.subheader("📋 Plano da Semana")
+# ============================================
+# PLANO DA SEMANA
+# ============================================
 
 plano = obter_plano_semanal()
 
 if plano["temas"]:
-    col1, col2 = st.columns([3, 1])
-    
-    with col1:
-        # Tabela de tarefas
-        dados_tabela = []
-        for t in plano["temas"][:7]:
-            status_emoji = {
-                "atrasada": "🔴",
-                "disponivel": "🟡",
-                "pendente": "🟢"
-            }.get(t.get("status", "pendente"), "⚪")
-            
-            high_yield_emoji = "🔥" if t.get("is_high_yield") else ""
-            
-            dados_tabela.append({
-                "Status": status_emoji,
-                "Tema": f"{t['tema']} {high_yield_emoji}",
-                "Área": t["grande_area"],
-                "Revisão": f"{t['revisao']}ª",
-                "Questões": t["questoes"]
-            })
+    # Construir tabela HTML
+    table_rows = ""
+    for t in plano["temas"][:7]:
+        status_html = render_status_badge(t.get("status", "pendente"))
+        hy_html = render_hy_badge() if t.get("is_high_yield") else ""
         
-        df = pd.DataFrame(dados_tabela)
-        st.dataframe(df, use_container_width=True, hide_index=True)
+        table_rows += f'''
+        <tr>
+            <td>{status_html}</td>
+            <td>{t['tema']} {hy_html}</td>
+            <td>{t['grande_area']}</td>
+            <td>{t['revisao']}ª Revisão</td>
+            <td style="font-weight: 700; color: #3b82f6;">{t['questoes']}</td>
+        </tr>
+        '''
     
-    with col2:
-        st.metric("Total Sugerido", f"{plano['total_sugerido']} questões")
-        st.metric("Meta Semanal", f"{plano['meta_questoes']} questões")
-        
-        diferenca = plano['total_sugerido'] - plano['meta_questoes']
-        if diferenca > 100:
-            st.warning("⚠️ Acumulado alto. Priorize os atrasados!")
-        elif diferenca < -100:
-            st.success("✅ Abaixo da meta. Bom ritmo!")
+    table_html = f'''
+    <table class="custom-table">
+        <thead>
+            <tr>
+                <th>Status</th>
+                <th>Tema</th>
+                <th>Área</th>
+                <th>Revisão</th>
+                <th>Questões</th>
+            </tr>
+        </thead>
+        <tbody>
+            {table_rows}
+        </tbody>
+    </table>
+    '''
+    
+    # Resumo lateral
+    summary_html = f'''
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div style="background: rgba(59, 130, 246, 0.1); padding: 1rem; border-radius: 12px; text-align: center;">
+            <div style="font-size: 1.5rem; font-weight: 800; color: #3b82f6;">{plano['total_sugerido']}</div>
+            <div style="font-size: 0.8rem; color: #94a3b8;">Sugerido</div>
+        </div>
+        <div style="background: rgba(16, 185, 129, 0.1); padding: 1rem; border-radius: 12px; text-align: center;">
+            <div style="font-size: 1.5rem; font-weight: 800; color: #10b981;">{plano['meta_questoes']}</div>
+            <div style="font-size: 0.8rem; color: #94a3b8;">Meta Semanal</div>
+        </div>
+    </div>
+    '''
+    
+    st.markdown(
+        render_section_card(
+            titulo="Plano da Semana",
+            icon="📋",
+            conteudo=table_html + "<div style='margin-top: 1.5rem;'>" + summary_html + "</div>",
+            icon_color="primary"
+        ),
+        unsafe_allow_html=True
+    )
 else:
-    st.info("📝 Nenhuma tarefa pendente. Registre seus estudos na página de Estudo.")
+    st.markdown(
+        render_section_card(
+            titulo="Plano da Semana",
+            icon="📋",
+            conteudo='''
+            <div style="text-align: center; padding: 2rem; color: #64748b;">
+                <div style="font-size: 2rem; margin-bottom: 0.5rem;">📝</div>
+                <div>Nenhuma tarefa pendente. Registre seus estudos na página de Estudo.</div>
+            </div>
+            ''',
+            icon_color="primary"
+        ),
+        unsafe_allow_html=True
+    )
 
-# Cobertura High-Yield
-st.markdown("---")
+# ============================================
+# COBERTURA E PERFORMANCE
+# ============================================
+
 col1, col2 = st.columns(2)
 
 with col1:
-    st.subheader("📊 Cobertura High-Yield por Área")
-    
     cobertura = priorizador.calcular_cobertura_high_yield()
     
+    progress_html = ""
     for area, dados in cobertura["por_area"].items():
-        col_a, col_b = st.columns([3, 1])
-        with col_a:
-            st.progress(dados["percentual"] / 100, text=f"{area}")
-        with col_b:
-            st.caption(f"{dados['revisados']}/{dados['total']} ({dados['percentual']}%)")
+        # Determinar cor baseada na porcentagem
+        if dados["percentual"] >= 80:
+            cor = "success"
+        elif dados["percentual"] >= 50:
+            cor = "warning"
+        else:
+            cor = "danger"
+        
+        progress_html += render_progress_bar(
+            label=area,
+            value=dados["revisados"],
+            max_value=dados["total"],
+            color=cor,
+            show_percentage=True
+        )
+    
+    st.markdown(
+        render_section_card(
+            titulo="Cobertura High-Yield por Área",
+            icon="🔥",
+            conteudo=progress_html,
+            icon_color="warning"
+        ),
+        unsafe_allow_html=True
+    )
 
 with col2:
-    st.subheader("📈 Performance por Revisão")
-    
-    # Estatísticas por revisão (simulado)
     registro = estudo.get("registro_temas", {})
     
-    r1_total, r1_acertos = 0, 0
-    r2_total, r2_acertos = 0, 0
-    r3_total, r3_acertos = 0, 0
+    # Contar revisões
+    total_temas = len(registro) if registro else 1
+    r1_count = sum(1 for d in registro.values() if d.get("r1"))
+    r2_count = sum(1 for d in registro.values() if d.get("r2"))
+    r3_count = sum(1 for d in registro.values() if d.get("r3"))
     
-    for tema, dados in registro.items():
-        if dados.get("r1", {}).get("questoes"):
-            r1_total += dados["r1"]["questoes"]
-            r1_acertos += dados["r1"].get("acertos", 0)
-        if dados.get("r2", {}).get("questoes"):
-            r2_total += dados["r2"]["questoes"]
-            r2_acertos += dados["r2"].get("acertos", 0)
-        if dados.get("r3", {}).get("questoes"):
-            r3_total += dados["r3"]["questoes"]
-            r3_acertos += dados["r3"].get("acertos", 0)
+    revision_html = f"""
+    {render_progress_bar("1ª Revisão", r1_count, total_temas, "primary", False)}
+    {render_progress_bar("2ª Revisão", r2_count, total_temas, "secondary", False)}
+    {render_progress_bar("3ª Revisão", r3_count, total_temas, "success", False)}
     
-    if r1_total > 0:
-        st.metric("1ª Revisão", f"{(r1_acertos/r1_total*100):.1f}%", f"{r1_total} questões")
-    else:
-        st.metric("1ª Revisão", "---", "Nenhuma ainda")
+    <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.05);">
+        {render_score_display(
+            score=nota,
+            label="Nota Estimada ENAMED",
+            delta=delta_nota,
+            meta=meta
+        )}
+    </div>
+    """
     
-    if r2_total > 0:
-        st.metric("2ª Revisão", f"{(r2_acertos/r2_total*100):.1f}%", f"{r2_total} questões")
-    else:
-        st.metric("2ª Revisão", "---", "Nenhuma ainda")
-    
-    if r3_total > 0:
-        st.metric("3ª Revisão", f"{(r3_acertos/r3_total*100):.1f}%", f"{r3_total} questões")
-    else:
-        st.metric("3ª Revisão", "---", "Nenhuma ainda")
+    st.markdown(
+        render_section_card(
+            titulo="Progresso das Revisões",
+            icon="📈",
+            conteudo=revision_html,
+            icon_color="success"
+        ),
+        unsafe_allow_html=True
+    )
 
-# Sidebar
+# ============================================
+# SIDEBAR
+# ============================================
+
 with st.sidebar:
-    st.header("👤 Informações")
-    
     nome = config.get("usuario", {}).get("nome", "Estudante")
     ano = config.get("usuario", {}).get("ano_estudo", 1)
     
     st.markdown(f"""
-    **Nome:** {nome}
-    
-    **Ano de Estudo:** {ano}º ano
-    
-    **Banca:** {config.get('metas', {}).get('banca_principal', 'ENAMED')}
-    
-    **Meta:** {config.get('metas', {}).get('nota_meta', 90)}%
-    """)
+    <div style="text-align: center; padding: 1rem 0;">
+        <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #3b82f6, #8b5cf6); 
+             border-radius: 50%; margin: 0 auto 1rem; display: flex; align-items: center; 
+             justify-content: center; font-size: 1.5rem; font-weight: 700; color: white;">
+            {nome[:2].upper() if nome else "US"}
+        </div>
+        <div style="font-weight: 700; color: #f8fafc; font-size: 1.1rem;">{nome}</div>
+        <div style="color: #64748b; font-size: 0.85rem;">{ano}º Ano • ENAMED 2027</div>
+    </div>
+    """, unsafe_allow_html=True)
     
     st.markdown("---")
     
-    st.header("🔗 Navegação Rápida")
+    # Countdown
+    st.markdown(render_countdown(dias), unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
+    st.markdown(f"""
+    <div style="font-size: 0.85rem; color: #94a3b8;">
+        <div style="margin-bottom: 0.5rem;"><strong style="color: #f8fafc;">Banca:</strong> {config.get('metas', {}).get('banca_principal', 'ENAMED')}</div>
+        <div style="margin-bottom: 0.5rem;"><strong style="color: #f8fafc;">Meta:</strong> {meta}%</div>
+        <div><strong style="color: #f8fafc;">Modo:</strong> Focado no Resultado</div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
+    st.markdown("##### 🔗 Navegação")
     st.page_link("pages/1_configuracoes.py", label="⚙️ Configurações")
     st.page_link("pages/2_calendario.py", label="📅 Calendário")
     st.page_link("pages/3_temas.py", label="📚 Temas")
@@ -319,15 +402,4 @@ with st.sidebar:
     st.page_link("pages/7_revisao_final.py", label="🎯 Revisão Final")
     
     st.markdown("---")
-    
     st.caption(f"Última atualização: {estudo.get('ultima_atualizacao', 'Nunca')[:10] if estudo.get('ultima_atualizacao') else 'Nunca'}")
-
-# Footer
-st.markdown("---")
-st.markdown("""
-<div style="text-align: center; color: #666; font-size: 0.9rem;">
-    <p>📚 Plataforma de Estudos para Residência Médica</p>
-    <p>Baseado em Distributed Practice e análise estratégica ENAMED</p>
-</div>
-""", unsafe_allow_html=True)
-
