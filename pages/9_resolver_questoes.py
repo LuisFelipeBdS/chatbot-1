@@ -108,11 +108,15 @@ if not st.session_state.questoes_selecionadas or st.session_state.sessao_finaliz
         st.caption(f"📊 {len(questoes_filtradas)} questões disponíveis")
     
     with col2:
+        # Garantir que max_value seja maior que min_value
+        max_questoes = max(6, min(100, len(questoes_filtradas))) if questoes_filtradas else 6
+        valor_padrao = min(20, max_questoes - 1) if max_questoes > 5 else 5
+        
         quantidade = st.slider(
             "📏 Quantidade de questões:",
-            min_value=5,
-            max_value=min(100, len(questoes_filtradas)) if questoes_filtradas else 5,
-            value=min(20, len(questoes_filtradas)) if questoes_filtradas else 5
+            min_value=1,
+            max_value=max_questoes,
+            value=min(valor_padrao, len(questoes_filtradas)) if questoes_filtradas else 5
         )
         
         aleatorizar = st.checkbox("🔀 Aleatorizar ordem", value=True)
@@ -132,7 +136,7 @@ if not st.session_state.questoes_selecionadas or st.session_state.sessao_finaliz
     st.markdown("---")
     
     if questoes_filtradas:
-        if st.button("🚀 Iniciar Sessão", type="primary", use_container_width=True):
+        if st.button("🚀 Iniciar Sessão", type="primary", width="stretch"):
             # Selecionar questões
             if aleatorizar:
                 random.shuffle(questoes_filtradas)
@@ -230,7 +234,7 @@ else:
         if st.button(
             f"{icone} {alt}" if icone else alt,
             key=f"alt_{idx}_{letra}",
-            use_container_width=True,
+            width="stretch",
             disabled=st.session_state.mostrar_gabarito
         ):
             st.session_state.respostas[idx] = {
