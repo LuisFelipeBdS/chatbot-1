@@ -76,7 +76,8 @@ bancas_unicas = sorted(list(set(q.get("banca", "Não informada") for q in todas_
 # MODO: CONFIGURAÇÃO DE SESSÃO
 # ============================================
 
-if not st.session_state.questoes_selecionadas or st.session_state.sessao_finalizada:
+# Só mostrar configuração se não estiver em sessão finalizada com dados
+if not st.session_state.questoes_selecionadas and not st.session_state.sessao_finalizada:
     
     st.subheader("🎯 Configurar Sessão de Questões")
     
@@ -347,21 +348,31 @@ if st.session_state.sessao_finalizada and st.session_state.questoes_selecionadas
     st.markdown("---")
     
     # Salvar resultado no workflow
+    # Determinar o tema correto: se foi "Aleatório" ou "Geral", usar o tema da primeira questão
+    tema_para_salvar = st.session_state.tema_sessao
+    if tema_para_salvar in ["Aleatório", "Geral", None]:
+        # Usar o tema da primeira questão da sessão
+        if st.session_state.questoes_selecionadas:
+            tema_para_salvar = st.session_state.questoes_selecionadas[0].get("tema", "Geral")
+    
+    # Mostrar em qual tema será salvo
+    st.info(f"📁 Será registrado no tema: **{tema_para_salvar}**")
+    
     if st.button("💾 Salvar no Histórico de Estudo", type="primary"):
-        tema_sessao = st.session_state.tema_sessao or "Geral"
-        
         # Atualizar registro de estudo
         if "registro_temas" not in estudo:
             estudo["registro_temas"] = {}
         
-        if tema_sessao not in estudo["registro_temas"]:
-            estudo["registro_temas"][tema_sessao] = {
+        grande_area = st.session_state.questoes_selecionadas[0].get("grande_area", "Geral") if st.session_state.questoes_selecionadas else "Geral"
+        
+        if tema_para_salvar not in estudo["registro_temas"]:
+            estudo["registro_temas"][tema_para_salvar] = {
                 "data_teoria": datetime.now().strftime("%Y-%m-%d"),
-                "grande_area": st.session_state.questoes_selecionadas[0].get("grande_area", "Geral") if st.session_state.questoes_selecionadas else "Geral"
+                "grande_area": grande_area
             }
         
         # Determinar qual revisão registrar
-        registro = estudo["registro_temas"][tema_sessao]
+        registro = estudo["registro_temas"][tema_para_salvar]
         
         if not registro.get("r1"):
             rev_key = "r1"
@@ -388,7 +399,7 @@ if st.session_state.sessao_finalizada and st.session_state.questoes_selecionadas
         estudo["ultima_atualizacao"] = datetime.now().isoformat()
         
         salvar_estudo(estudo)
-        st.success(f"✅ Resultado salvo! {rev_key.upper()} registrada para '{tema_sessao}'")
+        st.success(f"✅ Resultado salvo! {rev_key.upper()} registrada para '{tema_para_salvar}'")
         st.balloons()
     
     st.markdown("---")
