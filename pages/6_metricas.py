@@ -11,14 +11,9 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from utils.helpers import carregar_estudo, carregar_config, carregar_pesos
-from utils.styles import (
-    inject_css, render_main_header, render_metric_card, 
-    render_metrics_row, render_progress_bar, render_score_display,
-    render_section_card
-)
+from utils.styles import inject_css, render_main_header
 from core.metricas import SistemaMetricas, obter_estatisticas
 from core.priorizador_enamed import PriorizadorENAMED
-from utils.constants import CORES_DEGRADÊ
 
 st.set_page_config(
     page_title="Métricas - Plataforma de Estudos",
@@ -49,49 +44,46 @@ nota = stats["nota_estimada"]["nota_estimada"]
 meta = config.get("metas", {}).get("nota_meta", 90)
 delta_nota = nota - meta
 
-metrics_html = render_metrics_row([
-    render_metric_card(
-        icon="📊",
-        label="Nota Estimada",
+# Usando colunas nativas do Streamlit com st.metric
+col1, col2, col3, col4 = st.columns(4)
+
+with col1:
+    st.metric(
+        label="📊 Nota Estimada",
         value=f"{nota}%",
-        delta=f"{'↑' if delta_nota >= 0 else '↓'} {abs(delta_nota):.1f}% da meta",
-        delta_type="positive" if delta_nota >= 0 else "negative",
-        footer=f"Confiança: {stats['nota_estimada']['confianca']}",
-        color="primary"
-    ),
-    render_metric_card(
-        icon="✅",
-        label="Questões Feitas",
+        delta=f"{delta_nota:+.1f}% da meta",
+        delta_color="normal" if delta_nota >= 0 else "inverse"
+    )
+    st.caption(f"Confiança: {stats['nota_estimada']['confianca']}")
+
+with col2:
+    st.metric(
+        label="✅ Questões Feitas",
         value=f"{stats['questoes_total']:,}",
-        delta=f"Meta: 33.500",
-        delta_type="neutral",
-        footer=f"Acertos: {stats['acertos_total']:,}",
-        color="success"
-    ),
-    render_metric_card(
-        icon="🎯",
-        label="Taxa de Acerto",
+        delta=f"Acertos: {stats['acertos_total']:,}"
+    )
+    st.caption("Meta 2 anos: 33.500")
+
+with col3:
+    st.metric(
+        label="🎯 Taxa de Acerto",
         value=f"{stats['taxa_acerto_geral']:.1f}%",
         delta="Ótimo!" if stats['taxa_acerto_geral'] >= 80 else ("Bom" if stats['taxa_acerto_geral'] >= 60 else "Melhorar"),
-        delta_type="positive" if stats['taxa_acerto_geral'] >= 70 else "negative",
-        footer=f"Meta: {meta}%",
-        color="success" if stats['taxa_acerto_geral'] >= 70 else "warning"
-    ),
-    render_metric_card(
-        icon="📈",
-        label="Simulados",
-        value=f"{stats.get('simulados', 0)}",
-        delta="Realize simulados!",
-        delta_type="neutral",
-        footer="Recomendado: 3+",
-        color="secondary"
+        delta_color="normal" if stats['taxa_acerto_geral'] >= 70 else "inverse"
     )
-])
+    st.caption(f"Meta: {meta}%")
 
-st.markdown(metrics_html, unsafe_allow_html=True)
+with col4:
+    st.metric(
+        label="📈 Simulados",
+        value=f"{stats.get('simulados', 0)}",
+        delta="Realize simulados!"
+    )
+    st.caption("Recomendado: 3+")
 
 # Performance por área
 st.markdown("---")
+st.subheader("📈 Performance por Grande Área")
 
 col1, col2 = st.columns(2)
 
@@ -114,7 +106,6 @@ with col1:
                     stats_area[area]["questoes"] += rev_dados["questoes"]
                     stats_area[area]["acertos"] += rev_dados.get("acertos", 0)
     
-    progress_html = ""
     for area, estatisticas in stats_area.items():
         peso = pesos["pesos_areas"].get(area, 0) * 100
         
@@ -123,93 +114,60 @@ with col1:
         else:
             taxa = 0
         
-        if taxa >= 80:
-            cor = "success"
-        elif taxa >= 60:
-            cor = "warning"
-        else:
-            cor = "danger"
-        
-        progress_html += f"""
-        <div style="margin-bottom: 1rem;">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                <span style="font-size: 0.85rem; color: #cbd5e1;">{area}</span>
-                <span style="font-size: 0.85rem; color: #64748b;">Peso: {peso:.0f}%</span>
-            </div>
-            {render_progress_bar(f"Taxa: {taxa:.0f}%", taxa, 100, cor, False)}
-        </div>
-        """
-    
-    st.markdown(
-        render_section_card(
-            titulo="Performance por Grande Área",
-            icon="📈",
-            conteudo=progress_html,
-            icon_color="success"
-        ),
-        unsafe_allow_html=True
-    )
+        col_a, col_b = st.columns([3, 1])
+        with col_a:
+            st.progress(min(1.0, taxa / 100), text=f"{area}")
+        with col_b:
+            cor = "🟢" if taxa >= 80 else ("🟡" if taxa >= 60 else "🔴")
+            st.markdown(f"{cor} **{taxa:.0f}%**")
 
 with col2:
+    st.markdown("**📝 Progresso das Revisões**")
+    
     total_temas = len(registro) if registro else 1
     r1_count = sum(1 for d in registro.values() if d.get("r1"))
     r2_count = sum(1 for d in registro.values() if d.get("r2"))
     r3_count = sum(1 for d in registro.values() if d.get("r3"))
     
-    revision_html = f"""
-    {render_progress_bar("1ª Revisão", r1_count, total_temas, "primary", False)}
-    {render_progress_bar("2ª Revisão", r2_count, total_temas, "secondary", False)}
-    {render_progress_bar("3ª Revisão", r3_count, total_temas, "success", False)}
+    st.progress(r1_count / total_temas if total_temas > 0 else 0, text=f"1ª Revisão: {r1_count}/{total_temas}")
+    st.progress(r2_count / total_temas if total_temas > 0 else 0, text=f"2ª Revisão: {r2_count}/{total_temas}")
+    st.progress(r3_count / total_temas if total_temas > 0 else 0, text=f"3ª Revisão: {r3_count}/{total_temas}")
     
-    <div style="margin-top: 2rem;">
-        {render_score_display(nota, "Nota Estimada ENAMED", delta_nota, meta)}
+    st.markdown("---")
+    
+    # Score display
+    st.markdown(f"""
+    <div style="text-align: center; padding: 1.5rem; background: rgba(59, 130, 246, 0.1); border-radius: 12px;">
+        <div style="font-size: 3rem; font-weight: 800; color: #3b82f6;">{nota:.1f}%</div>
+        <div style="color: #94a3b8;">Nota Estimada ENAMED</div>
+        <div style="margin-top: 0.5rem; color: {'#10b981' if delta_nota >= 0 else '#ef4444'};">
+            {'⬆️' if delta_nota >= 0 else '⬇️'} {abs(delta_nota):.1f}% {'acima' if delta_nota >= 0 else 'abaixo'} da meta
+        </div>
     </div>
-    """
-    
-    st.markdown(
-        render_section_card(
-            titulo="Progresso das Revisões",
-            icon="📝",
-            conteudo=revision_html,
-            icon_color="primary"
-        ),
-        unsafe_allow_html=True
-    )
+    """, unsafe_allow_html=True)
 
 # Cobertura High-Yield
 st.markdown("---")
+st.subheader("🔥 Cobertura High-Yield por Área")
 
 cobertura = priorizador.calcular_cobertura_high_yield()
 
-cobertura_html = ""
-for area, dados in cobertura["por_area"].items():
-    if dados["percentual"] >= 80:
-        cor = "success"
-    elif dados["percentual"] >= 50:
-        cor = "warning"
-    else:
-        cor = "danger"
-    
-    cobertura_html += render_progress_bar(
-        f"{area}",
-        dados["revisados"],
-        dados["total"],
-        cor,
-        True
-    )
+cols = st.columns(3)
+col_idx = 0
 
-st.markdown(
-    render_section_card(
-        titulo="Cobertura High-Yield por Área",
-        icon="🔥",
-        conteudo=cobertura_html,
-        icon_color="warning"
-    ),
-    unsafe_allow_html=True
-)
+for area, dados in cobertura["por_area"].items():
+    with cols[col_idx % 3]:
+        perc = dados["percentual"]
+        cor = "🟢" if perc >= 80 else ("🟡" if perc >= 50 else "🔴")
+        
+        st.markdown(f"**{area}**")
+        st.progress(perc / 100, text=f"{cor} {dados['revisados']}/{dados['total']} ({perc:.0f}%)")
+    
+    col_idx += 1
 
 # Histórico
 st.markdown("---")
+st.subheader("📅 Histórico de Estudo")
 
 if registro:
     historico = []
@@ -218,9 +176,9 @@ if registro:
         if dados.get("data_teoria"):
             historico.append({
                 "Data": dados["data_teoria"],
-                "Tipo": "Teoria",
-                "Tema": tema[:30],
-                "Questões": 0
+                "Tipo": "📖 Teoria",
+                "Tema": tema[:35] + "..." if len(tema) > 35 else tema,
+                "Questões": "-"
             })
         
         for rev in ["r1", "r2", "r3"]:
@@ -228,26 +186,19 @@ if registro:
             if rev_dados.get("data"):
                 historico.append({
                     "Data": rev_dados["data"],
-                    "Tipo": rev.upper(),
-                    "Tema": tema[:30],
+                    "Tipo": f"📝 {rev.upper()}",
+                    "Tema": tema[:35] + "..." if len(tema) > 35 else tema,
                     "Questões": rev_dados.get("questoes", 0)
                 })
     
     if historico:
         historico.sort(key=lambda x: x["Data"], reverse=True)
-        
-        st.markdown(
-            render_section_card(
-                titulo="Histórico de Estudo",
-                icon="📅",
-                conteudo="",
-                icon_color="primary"
-            ),
-            unsafe_allow_html=True
-        )
-        
         df_hist = pd.DataFrame(historico[:15])
         st.dataframe(df_hist, use_container_width=True, hide_index=True)
+    else:
+        st.info("📝 Nenhum registro ainda. Comece a estudar!")
+else:
+    st.info("📝 Nenhum registro de estudo ainda.")
 
 # Sidebar
 with st.sidebar:
@@ -265,18 +216,18 @@ with st.sidebar:
     
     st.markdown("---")
     
+    # Resumo rápido
+    st.markdown("### 📊 Resumo")
+    st.metric("Temas Estudados", len(registro))
+    st.metric("Questões Total", stats['questoes_total'])
+    
+    st.markdown("---")
+    
     st.markdown("""
     ### 📖 Interpretação
     
-    **Setinhas:**
-    - ⬇️⬇️ Muito abaixo
-    - ⬇️ Abaixo
-    - ➡️ Esperado
-    - ⬆️ Acima
-    - ⬆️⬆️ Muito acima
-    
     **Cores:**
-    - 🔴 Crítico (<60%)
+    - 🟢 Bom (≥80%)
     - 🟡 Atenção (60-80%)
-    - 🟢 Bom (>80%)
+    - 🔴 Crítico (<60%)
     """)
