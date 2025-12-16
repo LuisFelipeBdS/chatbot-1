@@ -316,7 +316,7 @@ st.markdown("---")
 col1, col2, col3 = st.columns([1, 1, 1])
 
 with col2:
-    if st.button("💾 Salvar Configurações", type="primary", use_container_width=True):
+    if st.button("💾 Salvar Configurações", type="primary", width="stretch"):
         # Montar configuração atualizada
         nova_config = {
             "usuario": {

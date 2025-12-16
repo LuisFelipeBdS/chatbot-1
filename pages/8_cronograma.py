@@ -387,7 +387,7 @@ with tab4:
         "Realizado": [0] * 12  # Placeholder - seria calculado do estudo real
     })
     
-    st.dataframe(df_progresso, use_container_width=True, hide_index=True)
+    st.dataframe(df_progresso, width="stretch", hide_index=True)
     
     # Alertas
     st.markdown("---")

@@ -309,7 +309,7 @@ with tab3:
             })
         
         df = pd.DataFrame(dados_tabela)
-        st.dataframe(df, use_container_width=True, hide_index=True)
+        st.dataframe(df, width="stretch", hide_index=True)
         
         st.markdown("---")
         

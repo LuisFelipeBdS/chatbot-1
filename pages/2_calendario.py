@@ -1,22 +1,24 @@
 """
-Página de Gerenciamento de Temas
+Página de Calendário Acadêmico
 """
 
 import streamlit as st
 import sys
 from pathlib import Path
+from datetime import datetime, date, timedelta
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from utils.helpers import carregar_temas, carregar_pesos, carregar_estudo
-from utils.styles import inject_css, render_main_header, render_progress_bar
-from core.priorizador_enamed import PriorizadorENAMED
-from core.algoritmo_sugestao import AlgoritmoSugestao
+from utils.helpers import (
+    carregar_calendario, carregar_config, carregar_pesos,
+    obter_rodizio_atual, salvar_json
+)
+from utils.styles import inject_css, render_main_header, render_rotation_card, render_progress_bar
 
 st.set_page_config(
-    page_title="Temas - Plataforma de Estudos",
-    page_icon="📚",
+    page_title="Calendário - Plataforma de Estudos",
+    page_icon="📅",
     layout="wide"
 )
 
@@ -25,135 +27,248 @@ inject_css()
 
 # Header
 st.markdown(
-    render_main_header("📚 Gerenciamento de Temas", "Explore todos os temas por grande área"),
+    render_main_header("📅 Calendário Acadêmico", "Gerencie seus rodízios e sincronize com o estudo"),
     unsafe_allow_html=True
 )
 
 # Carregar dados
-temas = carregar_temas()
+calendario = carregar_calendario()
+config = carregar_config()
 pesos = carregar_pesos()
-estudo = carregar_estudo()
 
-priorizador = PriorizadorENAMED()
-algoritmo = AlgoritmoSugestao()
+# Verificar rodízio atual
+rodizio_atual = obter_rodizio_atual(calendario)
 
-# Filtros
-col1, col2 = st.columns(2)
-
-with col1:
-    areas_disponiveis = list(temas.get("grandes_areas", {}).keys())
-    area_selecionada = st.selectbox(
-        "Filtrar por Grande Área",
-        options=["Todas"] + areas_disponiveis
-    )
-
-with col2:
-    filtro_yield = st.selectbox(
-        "Filtrar por Classificação",
-        options=["Todos", "High-Yield 🔥", "Normal", "Low-Yield"]
-    )
-
-st.markdown("---")
-
-# Mostrar temas
-for area, dados in temas.get("grandes_areas", {}).items():
-    if area_selecionada != "Todas" and area != area_selecionada:
-        continue
+# Mostrar rodízio atual
+if rodizio_atual:
+    inicio = datetime.strptime(rodizio_atual["inicio"], "%Y-%m-%d")
+    fim = datetime.strptime(rodizio_atual["fim"], "%Y-%m-%d")
+    hoje = datetime.now()
     
-    peso_area = pesos["pesos_areas"].get(area, 0)
+    progresso = max(0, min(1.0, (hoje - inicio).days / (fim - inicio).days))
     
-    with st.expander(f"📁 {area} (Peso ENAMED: {peso_area * 100:.1f}%)", expanded=(area_selecionada != "Todas")):
-        
-        temas_lista = dados.get("temas", [])
-        
-        # Preparar dados para tabela
+    high_yield = pesos.get("temas_high_yield", {}).get(rodizio_atual["grande_area_principal"], [])
+    outros = rodizio_atual.get("temas_prioritarios", [])
+    outros_filtrados = [t for t in outros if t not in high_yield]
+    
+    st.markdown(
+        render_rotation_card(
+            nome=rodizio_atual['rodizio'],
+            periodo=f"{inicio.strftime('%d/%m/%Y')} - {fim.strftime('%d/%m/%Y')} • {(fim - inicio).days // 7} semanas",
+            progresso=progresso,
+            temas_hy=high_yield[:5],
+            outros_temas=outros_filtrados
+        ),
+        unsafe_allow_html=True
+    )
+else:
+    st.info("📅 Nenhum rodízio ativo no momento. Configure seu calendário abaixo.")
+
+# Tabs para cada ano
+tab1, tab2 = st.tabs(["📆 Ano 1 (2026)", "📆 Ano 2 (2027)"])
+
+with tab1:
+    st.markdown("""
+    <div class="section-card">
+        <div class="section-header">
+            <div class="section-icon primary">📆</div>
+            <div class="section-title">Rodízios do 5º Ano - 9º e 10º Períodos</div>
+        </div>
+        <div class="section-body">
+    """, unsafe_allow_html=True)
+    
+    rodizios_ano1 = calendario.get("ano_1", {}).get("2026", [])
+    
+    if rodizios_ano1:
+        # Criar DataFrame para visualização
         dados_tabela = []
-        
-        for tema_info in temas_lista:
-            nome = tema_info["nome"]
-            classificacao = priorizador.classificar_tema(nome, area)
-            
-            # Aplicar filtro
-            if filtro_yield == "High-Yield 🔥" and classificacao["classificacao"] != "high_yield":
-                continue
-            elif filtro_yield == "Normal" and classificacao["classificacao"] != "normal":
-                continue
-            elif filtro_yield == "Low-Yield" and classificacao["classificacao"] != "low_yield":
-                continue
-            
-            # Verificar status no estudo
-            registro_tema = estudo.get("registro_temas", {}).get(nome, {})
-            
-            status_teoria = "✅" if registro_tema.get("data_teoria") else "⬜"
-            status_r1 = "✅" if registro_tema.get("r1", {}).get("data") else "⬜"
-            status_r2 = "✅" if registro_tema.get("r2", {}).get("data") else "⬜"
-            status_r3 = "✅" if registro_tema.get("r3", {}).get("data") else "⬜"
-            
-            # Calcular prioridade
-            prioridade = algoritmo.calcular_prioridade_tema(nome, area)
+        for r in rodizios_ano1:
+            inicio = datetime.strptime(r["inicio"], "%Y-%m-%d")
+            fim = datetime.strptime(r["fim"], "%Y-%m-%d")
+            duracao = (fim - inicio).days + 1
             
             dados_tabela.append({
-                "Tema": nome,
-                "Tipo": classificacao["icone"],
-                "Prioridade": f"{int(prioridade * 100)}%",
-                "Teoria": status_teoria,
-                "R1": status_r1,
-                "R2": status_r2,
-                "R3": status_r3
+                "Rodízio": r["rodizio"],
+                "Início": inicio.strftime("%d/%m/%Y"),
+                "Fim": fim.strftime("%d/%m/%Y"),
+                "Duração": f"{duracao} dias",
+                "Grande Área": r["grande_area_principal"],
+                "Temas": len(r.get("temas_prioritarios", []))
             })
         
-        if dados_tabela:
-            df = pd.DataFrame(dados_tabela)
-            st.dataframe(df, use_container_width=True, hide_index=True)
+        df = pd.DataFrame(dados_tabela)
+        st.dataframe(df, width="stretch", hide_index=True)
+        
+        st.markdown("---")
+        st.markdown("### 📊 Timeline do Ano")
+        
+        for i, r in enumerate(rodizios_ano1):
+            inicio = datetime.strptime(r["inicio"], "%Y-%m-%d")
+            fim = datetime.strptime(r["fim"], "%Y-%m-%d")
+            hoje = datetime.now()
             
-            # Resumo
-            total = len(dados_tabela)
-            teoria_feita = sum(1 for d in dados_tabela if d["Teoria"] == "✅")
-            r1_feita = sum(1 for d in dados_tabela if d["R1"] == "✅")
+            if inicio <= hoje <= fim:
+                progresso = (hoje - inicio).days / (fim - inicio).days
+                status_icon = "🟢"
+                cor = "success"
+            elif hoje > fim:
+                progresso = 1.0
+                status_icon = "✅"
+                cor = "primary"
+            else:
+                progresso = 0.0
+                status_icon = "⏳"
+                cor = "secondary"
             
-            col1, col2, col3 = st.columns(3)
-            col1.metric("Total Temas", total)
-            col2.metric("Teoria", teoria_feita)
-            col3.metric("1ª Revisão", r1_feita)
-        else:
-            st.info("Nenhum tema encontrado com os filtros selecionados.")
+            st.markdown(f"**{status_icon} {r['rodizio']}** - {inicio.strftime('%d/%m')} a {fim.strftime('%d/%m')}")
+            st.progress(progresso)
+        
+        st.markdown("---")
+        st.markdown("### 📝 Detalhes por Rodízio")
+        
+        for r in rodizios_ano1:
+            with st.expander(f"🏥 {r['rodizio']} - {r['grande_area_principal']}"):
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.markdown(f"""
+                    **Período:** {r['inicio']} até {r['fim']}
+                    
+                    **Grande Área:** {r['grande_area_principal']}
+                    
+                    **Peso ENAMED:** {pesos['pesos_areas'].get(r['grande_area_principal'], 0) * 100:.1f}%
+                    """)
+                
+                with col2:
+                    st.markdown("**Temas Prioritários:**")
+                    temas = r.get("temas_prioritarios", [])
+                    high_yield_temas = pesos.get("temas_high_yield", {}).get(r['grande_area_principal'], [])
+                    
+                    for tema in temas:
+                        is_hy = any(t.lower() in tema.lower() for t in high_yield_temas)
+                        icon = "🔥" if is_hy else "📖"
+                        st.markdown(f"{icon} {tema}")
+    else:
+        st.warning("Nenhum rodízio cadastrado para 2026.")
+    
+    st.markdown("</div></div>", unsafe_allow_html=True)
+
+with tab2:
+    st.markdown("""
+    <div class="section-card">
+        <div class="section-header">
+            <div class="section-icon warning">📆</div>
+            <div class="section-title">Rodízios do 6º Ano - 11º e 12º Períodos</div>
+        </div>
+        <div class="section-body">
+    """, unsafe_allow_html=True)
+    
+    rodizios_ano2 = calendario.get("ano_2", {}).get("2027", [])
+    
+    if rodizios_ano2:
+        dados_tabela = []
+        for r in rodizios_ano2:
+            inicio = datetime.strptime(r["inicio"], "%Y-%m-%d")
+            fim = datetime.strptime(r["fim"], "%Y-%m-%d")
+            duracao = (fim - inicio).days + 1
+            
+            dados_tabela.append({
+                "Rodízio": r["rodizio"],
+                "Início": inicio.strftime("%d/%m/%Y"),
+                "Fim": fim.strftime("%d/%m/%Y"),
+                "Duração": f"{duracao} dias",
+                "Grande Área": r["grande_area_principal"]
+            })
+        
+        df = pd.DataFrame(dados_tabela)
+        st.dataframe(df, width="stretch", hide_index=True)
+    else:
+        st.info("""
+        📅 **Rodízios de 2027 ainda não cadastrados.**
+        
+        Você poderá adicionar os rodízios do segundo ano quando tiver o calendário disponível.
+        """)
+        
+        st.markdown("### ➕ Adicionar Rodízio")
+        
+        with st.form("novo_rodizio"):
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                nome_rodizio = st.text_input("Nome do Rodízio")
+                grande_area = st.selectbox(
+                    "Grande Área",
+                    options=[
+                        "Clinica Medica",
+                        "Saude Coletiva",
+                        "Pediatria",
+                        "Ginecologia e Obstetricia",
+                        "Cirurgia Geral",
+                        "Saude Mental"
+                    ]
+                )
+            
+            with col2:
+                data_inicio = st.date_input("Data de Início", value=date(2027, 1, 15))
+                data_fim = st.date_input("Data de Fim", value=date(2027, 3, 15))
+            
+            temas_prioritarios = st.text_area(
+                "Temas Prioritários (um por linha)",
+                placeholder="Exemplo:\nTuberculose\nHIV\nPneumonias"
+            )
+            
+            submitted = st.form_submit_button("Adicionar Rodízio", type="primary")
+            
+            if submitted and nome_rodizio:
+                novo_rodizio = {
+                    "rodizio": nome_rodizio,
+                    "inicio": data_inicio.strftime("%Y-%m-%d"),
+                    "fim": data_fim.strftime("%Y-%m-%d"),
+                    "temas_prioritarios": [t.strip() for t in temas_prioritarios.split("\n") if t.strip()],
+                    "grande_area_principal": grande_area
+                }
+                
+                if "2027" not in calendario.get("ano_2", {}):
+                    calendario["ano_2"]["2027"] = []
+                
+                calendario["ano_2"]["2027"].append(novo_rodizio)
+                salvar_json("calendario.json", calendario)
+                
+                st.success(f"✅ Rodízio '{nome_rodizio}' adicionado!")
+                st.rerun()
+    
+    st.markdown("</div></div>", unsafe_allow_html=True)
 
 # Sidebar
 with st.sidebar:
-    st.markdown("### 📊 Estatísticas Gerais")
+    st.markdown("### 📊 Estatísticas")
     
-    total_temas = sum(len(d.get("temas", [])) for d in temas.get("grandes_areas", {}).values())
-    st.metric("Total de Temas", total_temas)
+    total_rodizios = len(rodizios_ano1) + len(rodizios_ano2)
+    st.metric("Total de Rodízios", total_rodizios)
     
-    # Contar por classificação
-    high_yield = 0
-    normal = 0
-    low_yield = 0
-    
-    for area, dados in temas.get("grandes_areas", {}).items():
-        for tema_info in dados.get("temas", []):
-            classificacao = priorizador.classificar_tema(tema_info["nome"], area)
-            if classificacao["classificacao"] == "high_yield":
-                high_yield += 1
-            elif classificacao["classificacao"] == "low_yield":
-                low_yield += 1
-            else:
-                normal += 1
-    
-    st.metric("🔥 High-Yield", high_yield)
-    st.metric("📖 Normal", normal)
-    st.metric("📉 Low-Yield", low_yield)
+    if rodizio_atual:
+        dias_restantes = (
+            datetime.strptime(rodizio_atual["fim"], "%Y-%m-%d") - datetime.now()
+        ).days
+        st.metric("Dias até fim do rodízio", max(0, dias_restantes))
     
     st.markdown("---")
     st.markdown("""
-    ### 📖 Legenda
+    ### 💡 Dica
     
-    - 🔥 **High-Yield**: Alta chance de cair
-    - 📖 **Normal**: Chance regular
-    - 📉 **Low-Yield**: Baixa chance
+    Durante cada rodízio, priorize os temas 
+    relacionados para aproveitar a prática clínica.
     
-    ---
-    
-    - ✅ Concluído
-    - ⬜ Pendente
+    O sistema aplica um **bônus de 20%** 
+    para questões do rodízio atual!
     """)
+    
+    if rodizio_atual:
+        st.markdown("---")
+        st.markdown("### 🔥 Temas High-Yield")
+        
+        area = rodizio_atual.get("grande_area_principal", "")
+        high_yield = pesos.get("temas_high_yield", {}).get(area, [])
+        
+        for tema in high_yield[:5]:
+            st.markdown(f"• {tema}")

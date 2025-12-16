@@ -194,7 +194,7 @@ if registro:
     if historico:
         historico.sort(key=lambda x: x["Data"], reverse=True)
         df_hist = pd.DataFrame(historico[:15])
-        st.dataframe(df_hist, use_container_width=True, hide_index=True)
+        st.dataframe(df_hist, width="stretch", hide_index=True)
     else:
         st.info("📝 Nenhum registro ainda. Comece a estudar!")
 else:
