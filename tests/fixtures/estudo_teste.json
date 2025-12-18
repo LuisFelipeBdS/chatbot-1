@@ -1,0 +1,39 @@
+{
+  "registro_temas": {
+    "Tuberculose": {
+      "data_teoria": "2026-01-15",
+      "grande_area": "Clinica Medica",
+      "r1": {
+        "data": "2026-02-05",
+        "questoes": 50,
+        "acertos": 40
+      }
+    },
+    "HIV e AIDS": {
+      "data_teoria": "2026-01-20",
+      "grande_area": "Clinica Medica",
+      "r1": {
+        "data": "2026-02-10",
+        "questoes": 45,
+        "acertos": 38
+      },
+      "r2": {
+        "data": "2026-03-12",
+        "questoes": 40,
+        "acertos": 36
+      }
+    },
+    "Pré-natal": {
+      "data_teoria": "2026-02-01",
+      "grande_area": "Ginecologia e Obstetricia"
+    }
+  },
+  "questoes_marcadas_importantes": ["T001", "T003"],
+  "estatisticas_gerais": {
+    "total_questoes_feitas": 135,
+    "total_acertos": 114,
+    "simulados_realizados": 1
+  },
+  "ultima_atualizacao": "2026-03-15T10:30:00"
+}
+

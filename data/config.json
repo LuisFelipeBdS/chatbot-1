@@ -23,6 +23,12 @@
     "cirurgia_geral": null,
     "saude_mental": null
   },
+  "rotina": {
+    "dias_disponiveis": [],
+    "horas_por_dia": 3,
+    "horario_preferido": "Noite",
+    "questoes_por_hora": 15
+  },
   "configurado": false
 }
 

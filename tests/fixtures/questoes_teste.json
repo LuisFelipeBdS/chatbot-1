@@ -1,0 +1,50 @@
+{
+  "questoes": [
+    {
+      "id": "T001",
+      "enunciado": "Questão teste de Tuberculose para validação do sistema.",
+      "alternativas": ["(A) Opção A", "(B) Opção B", "(C) Opção C", "(D) Opção D"],
+      "gabarito": "A",
+      "tema": "Tuberculose",
+      "grande_area": "Clinica Medica",
+      "banca": "Teste"
+    },
+    {
+      "id": "T002",
+      "enunciado": "Questão teste de HIV para validação do sistema.",
+      "alternativas": ["(A) Opção A", "(B) Opção B", "(C) Opção C", "(D) Opção D"],
+      "gabarito": "B",
+      "tema": "HIV e AIDS",
+      "grande_area": "Clinica Medica",
+      "banca": "Teste"
+    },
+    {
+      "id": "T003",
+      "enunciado": "Questão teste de Pré-natal para validação do sistema.",
+      "alternativas": ["(A) Opção A", "(B) Opção B", "(C) Opção C", "(D) Opção D"],
+      "gabarito": "C",
+      "tema": "Pré-natal",
+      "grande_area": "Ginecologia e Obstetricia",
+      "banca": "Teste"
+    },
+    {
+      "id": "T004",
+      "enunciado": "Questão teste de Trauma para validação do sistema.",
+      "alternativas": ["(A) Opção A", "(B) Opção B", "(C) Opção C", "(D) Opção D"],
+      "gabarito": "D",
+      "tema": "ABCDE do Trauma",
+      "grande_area": "Cirurgia Geral",
+      "banca": "Teste"
+    },
+    {
+      "id": "T005",
+      "enunciado": "Questão teste de Imunizações para validação do sistema.",
+      "alternativas": ["(A) Opção A", "(B) Opção B", "(C) Opção C", "(D) Opção D"],
+      "gabarito": "A",
+      "tema": "Imunizações",
+      "grande_area": "Pediatria",
+      "banca": "Teste"
+    }
+  ]
+}
+
