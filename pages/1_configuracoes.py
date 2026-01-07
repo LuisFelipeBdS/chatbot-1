@@ -10,9 +10,12 @@ from datetime import datetime, date
 # Adicionar o diretório raiz ao path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+import json
 from utils.helpers import (
     carregar_config, salvar_config, carregar_pesos,
-    carregar_temas, calcular_dias_ate_prova
+    carregar_temas, calcular_dias_ate_prova,
+    carregar_estudo, salvar_estudo, carregar_calendario,
+    carregar_questoes, salvar_json
 )
 from utils.constants import (
     GRANDES_AREAS, MODOS_ESTUDO, MARGENS_ESTUDO,
@@ -39,11 +42,12 @@ st.markdown(
 config = carregar_config()
 
 # Tabs para organizar as configurações
-tab1, tab2, tab3, tab4 = st.tabs([
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "📋 Dados Pessoais", 
     "🎯 Metas", 
     "📊 Diagnóstico Inicial",
-    "⚡ Modo de Estudo"
+    "⚡ Modo de Estudo",
+    "💾 Backup"
 ])
 
 with tab1:
@@ -308,6 +312,151 @@ with tab4:
             - Prioriza pelo peso ENAMED
             - Ajusta conforme rodízio atual
             """)
+    
+    st.markdown("</div></div>", unsafe_allow_html=True)
+
+with tab5:
+    st.markdown("""
+    <div class="section-card">
+        <div class="section-header">
+            <div class="section-icon primary">💾</div>
+            <div class="section-title">Backup de Dados</div>
+        </div>
+        <div class="section-body">
+    """, unsafe_allow_html=True)
+    
+    st.warning("""
+    ⚠️ **IMPORTANTE**: O Streamlit Cloud pode reiniciar e perder seus dados após períodos de inatividade.
+    
+    **Faça backup regularmente!** Recomendamos exportar seus dados após cada sessão de estudo.
+    """)
+    
+    st.markdown("---")
+    
+    # EXPORTAR
+    st.subheader("📤 Exportar Dados")
+    st.markdown("Clique no botão abaixo para gerar um arquivo com todos os seus dados.")
+    
+    col_exp1, col_exp2 = st.columns([1, 2])
+    
+    with col_exp1:
+        if st.button("🔄 Gerar Backup", type="primary", key="btn_gerar_backup"):
+            # Carregar todos os dados
+            backup_data = {
+                "versao": "1.0",
+                "data_backup": datetime.now().isoformat(),
+                "config": carregar_config(),
+                "estudo": carregar_estudo(),
+                "temas": carregar_temas(),
+                "calendario": carregar_calendario(),
+                "questoes": carregar_questoes(),
+                "pesos": carregar_pesos()
+            }
+            
+            # Salvar no session_state para o download
+            st.session_state["backup_data"] = backup_data
+            st.session_state["backup_pronto"] = True
+            st.success("✅ Backup gerado! Clique no botão de download.")
+    
+    with col_exp2:
+        if st.session_state.get("backup_pronto", False):
+            backup_json = json.dumps(
+                st.session_state["backup_data"], 
+                indent=2, 
+                ensure_ascii=False
+            )
+            
+            data_hoje = datetime.now().strftime("%Y%m%d_%H%M")
+            nome_arquivo = f"residencia_backup_{data_hoje}.json"
+            
+            st.download_button(
+                label="⬇️ Download Backup",
+                data=backup_json,
+                file_name=nome_arquivo,
+                mime="application/json",
+                key="btn_download_backup"
+            )
+            
+            st.caption(f"Tamanho: {len(backup_json) / 1024:.1f} KB")
+    
+    st.markdown("---")
+    
+    # IMPORTAR
+    st.subheader("📥 Importar Dados")
+    st.markdown("Selecione um arquivo de backup para restaurar seus dados.")
+    
+    arquivo_upload = st.file_uploader(
+        "Selecione o arquivo de backup (.json)",
+        type=["json"],
+        key="upload_backup"
+    )
+    
+    if arquivo_upload is not None:
+        try:
+            backup_importado = json.load(arquivo_upload)
+            
+            # Validar estrutura
+            campos_necessarios = ["config", "estudo"]
+            campos_presentes = [c for c in campos_necessarios if c in backup_importado]
+            
+            if len(campos_presentes) < len(campos_necessarios):
+                st.error("❌ Arquivo inválido. Faltam campos obrigatórios.")
+            else:
+                st.success(f"✅ Arquivo válido! Versão: {backup_importado.get('versao', '?')}")
+                
+                if backup_importado.get("data_backup"):
+                    data_bkp = datetime.fromisoformat(backup_importado["data_backup"])
+                    st.info(f"📅 Backup criado em: {data_bkp.strftime('%d/%m/%Y às %H:%M')}")
+                
+                # Mostrar resumo do backup
+                st.markdown("**Dados no backup:**")
+                resumo_col1, resumo_col2 = st.columns(2)
+                
+                with resumo_col1:
+                    estudo_bkp = backup_importado.get("estudo", {})
+                    temas_reg = len(estudo_bkp.get("registro_temas", {}))
+                    st.metric("Temas Registrados", temas_reg)
+                
+                with resumo_col2:
+                    questoes_bkp = backup_importado.get("questoes", {})
+                    total_q = len(questoes_bkp.get("questoes", []))
+                    st.metric("Questões no Banco", total_q)
+                
+                st.markdown("---")
+                
+                st.warning("⚠️ **Atenção**: Restaurar o backup substituirá TODOS os dados atuais!")
+                
+                confirmar = st.checkbox("Confirmo que desejo substituir os dados atuais", key="confirmar_restaurar")
+                
+                if confirmar:
+                    if st.button("🔄 Restaurar Backup", type="primary", key="btn_restaurar"):
+                        # Restaurar cada arquivo
+                        if "config" in backup_importado:
+                            salvar_config(backup_importado["config"])
+                        
+                        if "estudo" in backup_importado:
+                            salvar_estudo(backup_importado["estudo"])
+                        
+                        if "temas" in backup_importado:
+                            salvar_json("temas.json", backup_importado["temas"])
+                        
+                        if "calendario" in backup_importado:
+                            salvar_json("calendario.json", backup_importado["calendario"])
+                        
+                        if "questoes" in backup_importado:
+                            salvar_json("questoes.json", backup_importado["questoes"])
+                        
+                        if "pesos" in backup_importado:
+                            salvar_json("pesos_enamed.json", backup_importado["pesos"])
+                        
+                        st.success("✅ Backup restaurado com sucesso!")
+                        st.balloons()
+                        st.info("🔄 Recarregue a página para ver os dados restaurados.")
+        
+        except json.JSONDecodeError:
+            st.error("❌ Erro ao ler o arquivo. Certifique-se de que é um JSON válido.")
+        except Exception as e:
+            st.error(f"❌ Erro inesperado: {str(e)}")
     
     st.markdown("</div></div>", unsafe_allow_html=True)
 
